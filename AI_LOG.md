@@ -103,3 +103,12 @@ A versão antiga usava C em WebAssembly e um Web Worker. A adaptação aprovada 
 Validação: mingw32-make -j4 test-integration BUILD=build-compare CFLAGS="-O2 -Werror" passou. As quatro estruturas reutilizam a entrada idêntica, e as contagens do benchmark coincidem com os eventos compare. A pasta separada contornou a recusa de sobrescrita de build/platform.exe no Windows.
 Segundo incremento: web/serve.mjs serve a página na interface de loopback e encaminha parâmetros validados ao C via execFile. O teste node tests/test_server.mjs build-compare/platform.exe passou com respostas nativas, entradas inválidas, origem externa e executável ausente.
 Terceiro incremento: formulário com tamanho, prévia, entrada manual ou aleatória, estrutura e algoritmos. A tabela usa as métricas do C e o player reaproveita o trace v1. Durante os testes, a importação passou a trazer o player à vista e o seletor de estrutura recebeu um rótulo independente. A suíte completa em C e Node.js passou, e o Chrome headless confirmou entrada manual e aleatória, igualdade da entrada, métricas da API, animação e regressão da importação.
+
+### Execução individual e experiência de comparação
+
+```text
+Já temos algo melhor, porém em comparação a versão antiga nossa plataforma não aceita a execução de apenas um algoritmo de ordenação, não apresenta o gráfico de comparação de todos os algoritmos selecionados e a animação não é fluída, além de não ter um controle de velocidade de animação que o projeto antigo tinha. A plataforma precisa entregar, além de otimização, conceitos de UX e UI também, a plataforma precisa ser completa e agradável ao usuário, e ainda não está assim
+```
+
+A CLI, a API e o formulário passaram a aceitar um ou mais algoritmos distintos. O painel acrescenta o gráfico das métricas nativas, e o player conserva barras por ID, atualiza apenas os destaques nas comparações e anima o intervalo afetado nos movimentos. O ritmo e a duração da transição acompanham o seletor de velocidade.
+Validação: mingw32-make -j4 test-integration BUILD=build-ux CFLAGS="-O2 -Werror" passou, incluindo execução individual pela CLI e API. O Chrome headless passou após ajustar o seletor do teste para Play exato. O teste verificou gráfico com um e dois algoritmos, valores e proporções, troca de velocidade durante a reprodução, progresso, importação de traces e ausência de rolagem horizontal da página a 390 px.

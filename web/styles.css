@@ -103,3 +103,30 @@ table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nu
 caption { text-align: left; font-weight: 600; margin-bottom: .5rem; }
 th, td { text-align: left; padding: .55rem; border-bottom: 1px solid #425675; }
 th { white-space: nowrap; }
+
+.intro { color: #c1d2e7; max-width: 58ch; }
+#compare { background: #92d9fb; color: #102339; border-color: #92d9fb; font-weight: 700; min-width: 8rem; }
+#compare:hover:not(:disabled) { background: #b8e8ff; }
+button:hover:not(:disabled) { border-color: #c4e6fd; }
+#viewer { margin-bottom: 1rem; }
+.trace-import { margin-top: 1.5rem; }
+.speed-control { display: flex; align-items: center; gap: .4rem; margin: 0; }
+#playback-speed { width: auto; }
+.speed-control label { margin: 0; }
+#playback-progress { width: 100%; height: .5rem; accent-color: #92d9fb; }
+.metric-chart { margin: 1rem 0; padding: 1rem; background: #101b29; border-radius: .5rem; }
+.metric-chart figcaption { font-weight: 700; margin-bottom: .75rem; }
+.metric-chart label { display: inline-block; margin-right: .5rem; }
+#chart-bars { list-style: none; padding: 0; margin: .75rem 0 0; }
+.metric-row { display: grid; grid-template-columns: 8.5rem 1fr minmax(4.5rem, auto); gap: .65rem; align-items: center; margin: .5rem 0; }
+.metric-track { background: #253853; border-radius: .25rem; overflow: hidden; height: .7rem; }
+.metric-fill { display: block; height: 100%; background: #70b7ed; border-radius: inherit; }
+.metric-row:nth-child(even) .metric-fill { background: #f6be63; }
+.metric-row strong { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 36rem) {
+  main { margin: 2rem auto; }
+  #comparison, #viewer { padding: .9rem; }
+  .metric-row { grid-template-columns: 1fr auto; }
+  .metric-track { grid-row: 2; grid-column: 1 / -1; }
+  .metric-row strong { grid-column: 2; grid-row: 1; }
+}

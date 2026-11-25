@@ -41,7 +41,7 @@ async function readInput(request) {
 
 function validInput(input) {
   return input && structures.has(input.structure) &&
-    Array.isArray(input.algorithms) && input.algorithms.length >= 2 &&
+    Array.isArray(input.algorithms) && input.algorithms.length >= 1 &&
     input.algorithms.every(name => algorithms.has(name)) &&
     new Set(input.algorithms).size === input.algorithms.length &&
     Number.isInteger(input.repetitions) && input.repetitions >= 1 && input.repetitions <= 100 &&

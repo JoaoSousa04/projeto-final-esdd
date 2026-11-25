@@ -64,11 +64,17 @@ try {
       assert.ok(metrics.medianMs >= 0);
     }
   }
+  const single = run(["compare", "vector", "2", "merge", ...input]);
+  assert.equal(single.status, 0, single.stderr);
+  const [singleRow, ...otherRows] = JSON.parse(single.stdout).results;
+  assert.deepEqual(otherRows, []);
+  assert.equal(singleRow.trace.algorithm, "merge");
+  assert.equal(singleRow.metrics.comparisons, 12);
   const empty = run(["compare", "vector", "1", "insertion,merge"]);
   assert.equal(empty.status, 0, empty.stderr);
   assert.deepEqual(JSON.parse(empty.stdout).input, []);
   for (const options of [
-    ["vector", "1", "merge"], ["vector", "1", "merge,merge"],
+    ["vector", "1", ""], ["vector", "1", "merge,merge"],
     ["vector", "0", "merge,insertion"], ["vector", "101", "merge,insertion"],
     ["vector", "1", "merge,insertion", "2147483648"], ["other", "1", "merge,insertion"],
     ["vector", "1", "merge,insertion,"],

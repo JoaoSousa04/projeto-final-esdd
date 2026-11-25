@@ -13,7 +13,7 @@ static void show_usage(void)
          "  platform --help\n"
          "  platform benchmark SIZE PROFILE SEED REPETITIONS\n"
          "  platform batch FILE\n"
-         "  platform compare STRUCTURE REPETITIONS ALGORITHM,ALGORITHM [INTEGER ...]\n"
+         "  platform compare STRUCTURE REPETITIONS ALGORITHM[,ALGORITHM ...] [INTEGER ...]\n"
          "  platform trace ALGORITHM STRUCTURE FILE [INTEGER ...]\n"
          "  platform step ALGORITHM STRUCTURE [INTEGER ...]\n"
          "Profiles: random, sorted, reverse, duplicates\n"
@@ -124,7 +124,7 @@ static bool parse_algorithms(const char *list, Algorithm *algorithms, size_t *co
         seen[algorithm] = true;
         algorithms[(*count)++] = algorithm;
         if (list[length] == '\0') {
-            return *count >= 2;
+            return true;
         }
         list += length + 1;
     }
@@ -141,7 +141,7 @@ static int run_compare(int argument_count, char **arguments)
         !parse_integer(arguments[3], &repetitions) || repetitions < 1 ||
         repetitions > COMPARE_MAX_REPETITIONS || size > COMPARE_MAX_VALUES ||
         !parse_algorithms(arguments[4], algorithms, &count)) {
-        fputs("Invalid comparison configuration (requires distinct algorithms).\n", stderr);
+        fputs("Invalid comparison configuration (choose at least one algorithm, without duplicates).\n", stderr);
         return 1;
     }
     int values[COMPARE_MAX_VALUES];

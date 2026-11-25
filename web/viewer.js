@@ -12,10 +12,18 @@ const play = document.getElementById("play");
 let replay;
 let timer;
 let loadSequence = 0;
-let scale = 1;
+const speed = document.getElementById("playback-speed");
+const progress = document.getElementById("playback-progress");
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const barNodes = new Map();
+let highlighted = new Set();
+
+function stepDelay() {
+  return 240 / Number(speed.value);
+}
 
 function stop() {
-  clearInterval(timer);
+  clearTimeout(timer);
   timer = undefined;
 }
 
@@ -26,47 +34,73 @@ function eventLabel(event) {
   return `Swap positions ${event.from + 1} and ${event.to + 1}`;
 }
 
-function render() {
-  const event = replay.highlight;
-  const highlighted = new Set();
-  if (event?.type === "compare") {
-    highlighted.add(event.leftId).add(event.rightId);
-  } else if (event?.type === "move") {
-    highlighted.add(event.id);
-  } else if (event?.type === "swap") {
-    highlighted.add(replay.items[event.from].id).add(replay.items[event.to].id);
-  }
-  const previousBars = new Map(Array.from(bars.children, bar => [Number(bar.dataset.id), bar]));
-  const before = new Map(Array.from(previousBars, ([id, bar]) => [id, bar.getBoundingClientRect().left]));
+function setupBars() {
+  barNodes.clear();
+  highlighted = new Set();
+  const scale = 36 / replay.items.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
   const fragment = document.createDocumentFragment();
   for (const item of replay.items) {
-    const bar = previousBars.get(item.id) ?? document.createElement("li");
-    for (const animation of bar.getAnimations()) animation.cancel();
-    bar.className = highlighted.has(item.id) ? "bar selected" : "bar";
+    const bar = document.createElement("li");
+    bar.className = "bar";
     bar.dataset.id = item.id;
     bar.dataset.value = item.value;
     bar.title = `Item #${item.id}`;
     bar.style.setProperty("--height", `${Math.abs(item.value) * scale}%`);
     bar.style.setProperty("--bottom", `${50 + Math.min(item.value, 0) * scale}%`);
-    if (!bar.firstElementChild) {
-      const value = document.createElement("span");
-      value.textContent = item.value;
-      bar.append(value);
-    }
+    const label = document.createElement("span");
+    label.textContent = item.value;
+    bar.append(label);
+    barNodes.set(item.id, bar);
     fragment.append(bar);
   }
   bars.replaceChildren(fragment);
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    const offsets = Array.from(previousBars, ([id, bar]) => [bar, before.get(id) - bar.getBoundingClientRect().left]);
-    for (const [bar, offset] of offsets) {
-      if (offset !== 0) {
-        bar.animate([{ transform: `translateX(${offset}px)` }, { transform: "none" }],
-          { duration: 140, easing: "ease-out" });
-      }
-    }
+}
+
+function reorderBars(event) {
+  if (!event || event.type === "compare") return;
+  const start = Math.min(event.from, event.to);
+  const end = Math.max(event.from, event.to);
+  const affected = replay.items.slice(start, end + 1).map(item => barNodes.get(item.id));
+  const positions = reducedMotion.matches ? [] : affected.map(bar => bar.getBoundingClientRect().left);
+  const fragment = document.createDocumentFragment();
+  const anchor = bars.children[end + 1] ?? null;
+  for (const bar of affected) {
+    for (const animation of bar.getAnimations()) animation.cancel();
+    fragment.append(bar);
   }
+  bars.insertBefore(fragment, anchor);
+  if (positions.length) {
+    const offsets = affected.map((bar, index) => positions[index] - bar.getBoundingClientRect().left);
+    affected.forEach((bar, index) => {
+      if (offsets[index] !== 0) {
+        bar.animate([{ transform: `translateX(${offsets[index]}px)` }, { transform: "none" }],
+          { duration: Math.min(240, stepDelay() * 0.85), easing: "cubic-bezier(.2,.65,.35,1)" });
+      }
+    });
+  }
+}
+
+function render() {
+  const event = replay.highlight;
+  const selected = new Set();
+  if (event?.type === "compare") {
+    selected.add(event.leftId).add(event.rightId);
+  } else if (event?.type === "move") {
+    selected.add(event.id);
+  } else if (event?.type === "swap") {
+    selected.add(replay.items[event.from].id).add(replay.items[event.to].id);
+  }
+  for (const id of highlighted) {
+    if (!selected.has(id)) barNodes.get(id).classList.remove("selected");
+  }
+  for (const id of selected) {
+    if (!highlighted.has(id)) barNodes.get(id).classList.add("selected");
+  }
+  highlighted = selected;
   const count = replay.trace.events.length;
   const atEnd = replay.cursor === count;
+  progress.max = Math.max(1, count);
+  progress.value = count === 0 ? 1 : replay.cursor;
   statusLabel.textContent = `Step ${replay.cursor} of ${count} · ${eventLabel(event)}${atEnd ? " · Finished" : ""}`;
   previous.disabled = replay.cursor === 0;
   next.disabled = atEnd;
@@ -79,10 +113,8 @@ function showTrace(trace, label) {
   ++loadSequence;
   stop();
   replay = loaded;
-  const largest = trace.initial.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
-  scale = 36 / largest;
   origin.textContent = `${label} · ${trace.algorithm} sort · ${trace.structure}`;
-  bars.replaceChildren();
+  setupBars();
   viewer.hidden = false;
   error.hidden = true;
   render();
@@ -108,8 +140,12 @@ fileInput.addEventListener("change", async () => {
 });
 
 function forward() {
-  replay.next();
-  if (replay.cursor === replay.trace.events.length) stop();
+  if (replay.next()) reorderBars(replay.highlight);
+  if (replay.cursor === replay.trace.events.length) {
+    stop();
+  } else if (timer !== undefined) {
+    timer = setTimeout(forward, stepDelay());
+  }
   render();
 }
 
@@ -119,16 +155,23 @@ next.addEventListener("click", () => {
 });
 previous.addEventListener("click", () => {
   stop();
-  replay.undo();
+  const event = replay.highlight;
+  if (replay.undo()) reorderBars(event);
   render();
 });
 play.addEventListener("click", () => {
   if (timer === undefined) {
-    timer = setInterval(forward, 200);
+    timer = setTimeout(forward, stepDelay());
   } else {
     stop();
   }
   render();
+});
+
+speed.addEventListener("change", () => {
+  if (timer === undefined) return;
+  stop();
+  timer = setTimeout(forward, stepDelay());
 });
 
 const form = document.getElementById("comparison-form");
@@ -141,6 +184,9 @@ const comparisonError = document.getElementById("comparison-error");
 const resultPanel = document.getElementById("comparison-results");
 const resultInput = document.getElementById("result-input");
 const resultRows = document.getElementById("result-rows");
+const chartMetric = document.getElementById("chart-metric");
+const chartBars = document.getElementById("chart-bars");
+let currentResults = [];
 const algorithmLabels = { insertion: "Insertion Sort", merge: "Merge Sort" };
 
 function readValues() {
@@ -175,8 +221,14 @@ function showComparisonError(message) {
   comparisonError.hidden = false;
 }
 
+function selectedAlgorithms() {
+  return Array.from(form.querySelectorAll('input[name="algorithms"]:checked'),
+    checkbox => checkbox.value);
+}
+
 form.addEventListener("input", () => {
   comparisonError.hidden = true;
+  compare.textContent = selectedAlgorithms().length === 1 ? "Run algorithm" : "Compare";
   updatePreview();
 });
 
@@ -188,6 +240,34 @@ document.getElementById("generate").addEventListener("click", () => {
   comparisonError.hidden = true;
   updatePreview();
 });
+
+function renderChart() {
+  const metric = chartMetric.value;
+  const maximum = Math.max(0, ...currentResults.map(row => row.metrics[metric]));
+  const fragment = document.createDocumentFragment();
+  for (const { trace, metrics } of currentResults) {
+    const value = metrics[metric];
+    const row = document.createElement("li");
+    row.className = "metric-row";
+    const name = document.createElement("span");
+    name.textContent = algorithmLabels[trace.algorithm];
+    const track = document.createElement("span");
+    track.className = "metric-track";
+    track.setAttribute("aria-hidden", "true");
+    const fill = document.createElement("span");
+    fill.className = "metric-fill";
+    fill.style.width = maximum === 0 ? "0%" : `${value / maximum * 100}%`;
+    track.append(fill);
+    const label = document.createElement("strong");
+    label.textContent = metric === "medianMs" ? `${value.toFixed(6)} ms`
+      : metric.endsWith("Bytes") ? `${value} B` : String(value);
+    row.append(name, track, label);
+    fragment.append(row);
+  }
+  chartBars.replaceChildren(fragment);
+}
+
+chartMetric.addEventListener("change", renderChart);
 
 function showResults(result) {
   const rows = document.createDocumentFragment();
@@ -215,6 +295,9 @@ function showResults(result) {
     rows.append(row);
   }
   showTrace(result.results[0].trace, "Native C comparison");
+  currentResults = result.results;
+  document.getElementById("results-heading").textContent = currentResults.length === 1 ? "Run result" : "Comparison results";
+  renderChart();
   resultRows.replaceChildren(rows);
   resultInput.textContent = `${result.structure} · ${result.repetitions} repetitions · [${result.input.join(", ")}]`;
   resultPanel.hidden = false;
@@ -226,9 +309,8 @@ form.addEventListener("submit", async event => {
   comparisonStatus.textContent = "";
   try {
     const values = readValues();
-    const algorithms = Array.from(form.querySelectorAll('input[name="algorithms"]:checked'),
-      checkbox => checkbox.value);
-    if (algorithms.length < 2) throw new Error("Choose at least two distinct algorithms.");
+    const algorithms = selectedAlgorithms();
+    if (algorithms.length === 0) throw new Error("Choose at least one algorithm.");
     if (location.protocol === "file:") {
       throw new Error("Start the local service with node web/serve.mjs and open the address it prints.");
     }

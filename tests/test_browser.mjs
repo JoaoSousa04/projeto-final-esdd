@@ -50,6 +50,7 @@ try {
       await next.click();
       assert.equal(await page.locator(".selected").count(), 2);
       const firstStep = await status.innerText();
+      assert.equal(await page.locator("#playback-progress").evaluate(progress => progress.value), 1);
       await undo.click();
       assert.deepEqual(await items(), trace.initial);
       await next.click();
@@ -69,7 +70,7 @@ try {
   }
 
   const animated = await load("insertion", "vector", ["2", "1"]);
-  await page.getByRole("button", { name: "Play" }).click();
+  await page.getByRole("button", { name: "Play", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("#next").disabled);
   assert.deepEqual(await items(), animated.final);
   await load("merge", "vector", []);
@@ -89,7 +90,7 @@ try {
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   const size = page.getByLabel("Input size");
   const values = page.getByLabel(/Input values/);
-  const compare = page.getByRole("button", { name: "Compare", exact: true });
+  const compare = page.getByRole("button", { name: /^(Compare|Run algorithm)$/ });
   await size.fill("3");
   await compare.click();
   assert.match(await page.locator("#comparison-error").innerText(), /3.*7/);
@@ -98,8 +99,16 @@ try {
   assert.match(await page.locator("#comparison-error").innerText(), /32-bit integers/);
   await values.fill("3 1 -4");
   await page.getByRole("checkbox", { name: "Merge Sort" }).uncheck();
+  await page.getByRole("checkbox", { name: "Insertion Sort" }).uncheck();
   await compare.click();
-  assert.match(await page.locator("#comparison-error").innerText(), /at least two/);
+  assert.match(await page.locator("#comparison-error").innerText(), /at least one/);
+  await page.getByRole("checkbox", { name: "Insertion Sort" }).check();
+
+  assert.equal(await compare.textContent(), "Run algorithm");
+  const individual = await compareFromPage([3, 1, -4], "vector");
+  assert.deepEqual(individual.results.map(row => row.trace.algorithm), ["insertion"]);
+  assert.equal(await page.locator("#chart-bars li").count(), 1);
+  assert.equal(await page.locator("#results-heading").textContent(), "Run result");
   await page.getByRole("checkbox", { name: "Merge Sort" }).check();
 
   async function compareFromPage(expectedInput, expectedStructure) {
@@ -139,6 +148,31 @@ try {
   assert.equal(await page.locator("#preview").textContent(), "[4, -2, 4, 0, -3, 1, 0]");
   const manual = await compareFromPage([4, -2, 4, 0, -3, 1, 0], "vector");
   assert.deepEqual(manual.results.map(row => row.metrics.comparisons), [16, 12]);
+  const chart = page.getByRole("combobox", { name: "Chart metric" });
+  await chart.selectOption("comparisons");
+  assert.deepEqual(await page.locator("#chart-bars strong").allTextContents(), ["16", "12"]);
+  assert.deepEqual(await page.locator("#chart-bars .metric-fill").evaluateAll(
+    bars => bars.map(bar => bar.style.width)), ["100%", "75%"]);
+  await chart.selectOption("auxiliaryBytes");
+  assert.deepEqual(await page.locator("#chart-bars strong").allTextContents(),
+    manual.results.map(row => `${row.metrics.auxiliaryBytes} B`));
+
+  await page.getByRole("button", { name: "Replay Merge Sort" }).click();
+  const playerSpeed = page.getByRole("combobox", { name: "Speed" });
+  await page.evaluate(() => {
+    window.scheduledDelays = [];
+    const original = window.setTimeout;
+    window.setTimeout = (callback, delay, ...args) => {
+      if (callback.name === "forward") window.scheduledDelays.push(delay);
+      return original(callback, delay, ...args);
+    };
+  });
+  await playerSpeed.selectOption("0.5");
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await playerSpeed.selectOption("4");
+  await page.waitForFunction(() => document.querySelector("#next").disabled);
+  assert.deepEqual(await page.evaluate(() => [...new Set(window.scheduledDelays)]), [480, 60]);
+  assert.deepEqual(await items(), manual.results[1].trace.final);
 
   await size.fill("4");
   await page.getByRole("combobox", { name: "Structure", exact: true }).selectOption("circular");
@@ -147,6 +181,9 @@ try {
   assert.equal(generated.length, 4);
   assert.ok(generated.every(value => Number.isInteger(value) && value >= -100 && value <= 100));
   await compareFromPage(generated, "circular");
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  assert.equal(await page.locator("#chart-bars li").count(), 2);
 
   assert.deepEqual(errors, []);
   console.log("Browser comparison passed: manual and random input, matching native metrics and traces.");

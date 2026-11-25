@@ -41,8 +41,15 @@ await withServer(resolve(process.argv[2]), async url => {
     assert.equal(metrics.comparisons, trace.events.filter(event => event.type === "compare").length);
   }
 
+  const single = await post(url, { ...input, algorithms: ["merge"] });
+  assert.equal(single.status, 200);
+  const singleRows = (await single.json()).results;
+  assert.equal(singleRows.length, 1);
+  assert.equal(singleRows[0].trace.algorithm, "merge");
+  assert.equal(singleRows[0].metrics.comparisons, 12);
+
   for (const invalid of [
-    "{", { ...input, values: [1.5] }, { ...input, values: [2147483648] },
+    "{", { ...input, algorithms: [] }, { ...input, values: [1.5] }, { ...input, values: [2147483648] },
     { ...input, algorithms: ["merge", "merge"] }, { ...input, structure: "other" },
     { ...input, repetitions: 101 }, { ...input, values: Array(257).fill(0) },
     " ".repeat(8200),
