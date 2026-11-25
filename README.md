@@ -13,14 +13,14 @@ mingw32-make test
 On Linux or macOS with GCC and GNU Make, use `make`, `make test`, and `./build/platform --help`.
 ## Benchmark and batch
 
-Run all eight combinations or submit one task per line:
+Run all 24 combinations or submit one task per line:
 
 ~~~powershell
 ./build/platform.exe benchmark 1000 random 42 5
 ./build/platform.exe batch examples/batch.txt
 ~~~
 
-A task line contains algorithm, structure, size, profile, seed, and repetition count. Algorithms are `insertion` and `merge`. Structures are `vector`, `singly`, `doubly`, and `circular`. Profiles are `random`, `sorted`, `reverse`, and `duplicates`. Use sizes from 0 to 1,000,000, unsigned 32-bit seeds, and 1 to 1,000 repetitions. Start with small inputs because insertion sort can take quadratic time.
+A task line contains algorithm, structure, size, profile, seed, and repetition count. Algorithms are `bubble`, `heap`, `insertion`, `merge`, `quick`, and `selection`. Structures are `vector`, `singly`, `doubly`, and `circular`. Profiles are `random`, `sorted`, `reverse`, and `duplicates`. Use sizes from 0 to 1,000,000, unsigned 32-bit seeds, and 1 to 1,000 repetitions. Start with small inputs because insertion sort can take quadratic time.
 
 The report contains task settings, per-run milliseconds, estimated heap bytes, value comparisons, and median milliseconds for successful runs. Match rows by task ID. An invalid task produces an error row and a nonzero process exit status. Subsequent tasks still run.
 

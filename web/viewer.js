@@ -187,7 +187,7 @@ const resultRows = document.getElementById("result-rows");
 const chartMetric = document.getElementById("chart-metric");
 const chartBars = document.getElementById("chart-bars");
 let currentResults = [];
-const algorithmLabels = { insertion: "Insertion Sort", merge: "Merge Sort" };
+
 
 function readValues() {
   const size = inputSize.valueAsNumber;

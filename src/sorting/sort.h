@@ -4,7 +4,7 @@
 #include "../structures/data.h"
 #include <stdint.h>
 
-typedef enum { INSERTION, MERGE, ALGORITHM_COUNT } Algorithm;
+typedef enum { INSERTION, MERGE, BUBBLE, HEAP, QUICK, SELECTION, ALGORITHM_COUNT } Algorithm;
 typedef enum { COMPARE, SWAP, MOVE } EventType;
 
 typedef struct {

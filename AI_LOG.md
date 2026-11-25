@@ -112,3 +112,12 @@ Já temos algo melhor, porém em comparação a versão antiga nossa plataforma 
 
 A CLI, a API e o formulário passaram a aceitar um ou mais algoritmos distintos. O painel acrescenta o gráfico das métricas nativas, e o player conserva barras por ID, atualiza apenas os destaques nas comparações e anima o intervalo afetado nos movimentos. O ritmo e a duração da transição acompanham o seletor de velocidade.
 Validação: mingw32-make -j4 test-integration BUILD=build-ux CFLAGS="-O2 -Werror" passou, incluindo execução individual pela CLI e API. O Chrome headless passou após ajustar o seletor do teste para Play exato. O teste verificou gráfico com um e dois algoritmos, valores e proporções, troca de velocidade durante a reprodução, progresso, importação de traces e ausência de rolagem horizontal da página a 390 px.
+
+### Seis algoritmos e reprodução lado a lado
+
+```text
+Certo, os botões de velocidade foram adicionados, porém como informei, a versão antiga ao clicar para comparar ele gerava um gráfico para cada algoritmo selecionado. Além disso, a versão antiga tinha as seguintes opções de algoritmos: bubble sort, heap sort, insertion sort, merge, quick, selection. O que queremos agora é que a plataforma gere um gráfico para cada algoritmo selecionado quando clicar em compare, e que cada gráfico tenha sua animação, para que o usuário tenha um feedback visual da comparação entre os algoritmos. Além disso, a versão antiga era responsiva dependendo de quantos algoritmos eram selecionados, quanto mais algoritmos em uma execução, menor os gráficos ficavam para que cabesse todos os gráficos lado a lado para essa comparação visual.
+```
+
+O núcleo recupera Bubble, Heap, Quick e Selection. Os quatro algoritmos usam acesso direto no vetor e um índice de nós nas listas. A ordenação preserva os nós e restaura os links, contabiliza a alocação auxiliar e emite trocas no formato de eventos existente.
+Validação do núcleo: mingw32-make -j4 test-integration BUILD=build-race CFLAGS="-O2 -Werror" passou. A matriz cobriu 24 combinações em seis classes de entrada, a integração verificou os seis traces nas quatro estruturas, e a API aceitou os seis algoritmos na mesma requisição.

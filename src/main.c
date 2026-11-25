@@ -17,7 +17,7 @@ static void show_usage(void)
          "  platform trace ALGORITHM STRUCTURE FILE [INTEGER ...]\n"
          "  platform step ALGORITHM STRUCTURE [INTEGER ...]\n"
          "Profiles: random, sorted, reverse, duplicates\n"
-         "Algorithms: insertion, merge\n"
+         "Algorithms: bubble, heap, insertion, merge, quick, selection\n"
          "Structures: vector, singly, doubly, circular");
 }
 

@@ -1,11 +1,20 @@
 "use strict";
 
+const algorithmLabels = Object.freeze({
+  bubble: "Bubble Sort",
+  heap: "Heap Sort",
+  insertion: "Insertion Sort",
+  merge: "Merge Sort",
+  quick: "Quick Sort",
+  selection: "Selection Sort",
+});
+
 class TraceReplay {
   constructor(trace) {
     if (!trace || trace.schemaVersion !== 1) {
       throw new Error("Unsupported trace version.");
     }
-    if (!["insertion", "merge"].includes(trace.algorithm) ||
+    if (!Object.hasOwn(algorithmLabels, trace.algorithm) ||
         !["vector", "singly", "doubly", "circular"].includes(trace.structure) ||
         !Array.isArray(trace.initial) || !Array.isArray(trace.events) || !Array.isArray(trace.final)) {
       throw new Error("Invalid trace metadata.");
@@ -91,4 +100,5 @@ class TraceReplay {
 
 if (typeof module !== "undefined") {
   module.exports = TraceReplay;
+  module.exports.algorithmLabels = algorithmLabels;
 }

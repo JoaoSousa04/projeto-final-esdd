@@ -31,12 +31,22 @@ static void verify_case(Structure kind, Algorithm algorithm, const int *values, 
     assert(sort_data(&data, algorithm, &metrics, NULL, NULL));
     assert(data.size == size && data_valid(&data));
     assert((metrics.comparisons == 0) == (size < 2));
-    assert(metrics.auxiliary_bytes ==
-           (size >= 2 && kind == VECTOR && algorithm == MERGE ? size * sizeof(Item) : 0));
+    size_t expected_bytes = 0;
+    if (size >= 2 && kind == VECTOR && algorithm == MERGE) {
+        expected_bytes = size * sizeof(Item);
+    } else if (size >= 2 && kind != VECTOR && algorithm >= BUBBLE) {
+        expected_bytes = size * sizeof(Node *);
+    }
+    assert(metrics.auxiliary_bytes == expected_bytes);
+    bool stable = algorithm == INSERTION || algorithm == MERGE || algorithm == BUBBLE;
+    bool seen[8] = {false};
     const Node *node = data.head;
     for (size_t index = 0; index < size; ++index) {
         Item item = kind == VECTOR ? data.items[index] : node->item;
-        assert(item.value == expected[index].value && item.id == expected[index].id);
+        assert(item.value == expected[index].value);
+        assert(item.id < size && !seen[item.id] && item.value == values[item.id]);
+        seen[item.id] = true;
+        assert(!stable || item.id == expected[index].id);
         if (node != NULL) {
             assert(node == original[item.id]);
             node = node->next;

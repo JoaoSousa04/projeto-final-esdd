@@ -41,6 +41,11 @@ await withServer(resolve(process.argv[2]), async url => {
     assert.equal(metrics.comparisons, trace.events.filter(event => event.type === "compare").length);
   }
 
+  const allNames = ["bubble", "heap", "insertion", "merge", "quick", "selection"];
+  const all = await post(url, { ...input, algorithms: allNames });
+  assert.equal(all.status, 200);
+  assert.deepEqual((await all.json()).results.map(row => row.trace.algorithm), allNames);
+
   const single = await post(url, { ...input, algorithms: ["merge"] });
   assert.equal(single.status, 200);
   const singleRows = (await single.json()).results;

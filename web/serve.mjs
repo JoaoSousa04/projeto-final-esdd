@@ -4,10 +4,11 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import TraceReplay from "./replay.js";
 
 const run = promisify(execFile);
 const host = "127.0.0.1";
-const algorithms = new Set(["insertion", "merge"]);
+const algorithms = new Set(Object.keys(TraceReplay.algorithmLabels));
 const structures = new Set(["vector", "singly", "doubly", "circular"]);
 const defaultExecutable = fileURLToPath(new URL(
   process.platform === "win32" ? "../build/platform.exe" : "../build/platform", import.meta.url,
@@ -97,7 +98,7 @@ export function createComparisonServer({ executable = defaultExecutable } = {}) 
       const args = ["compare", structure, String(repetitions), selected.join(","), ...values.map(String)];
       const { stdout } = await run(executable, args, {
         timeout: 15000,
-        maxBuffer: 8 * 1024 * 1024,
+        maxBuffer: 24 * 1024 * 1024,
         windowsHide: true,
       });
       return json(response, 200, JSON.parse(stdout));

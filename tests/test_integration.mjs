@@ -64,6 +64,20 @@ try {
       assert.ok(metrics.medianMs >= 0);
     }
   }
+  const allAlgorithms = ["bubble", "heap", "insertion", "merge", "quick", "selection"];
+  for (const structure of ["vector", "singly", "doubly", "circular"]) {
+    const all = run(["compare", structure, "1", allAlgorithms.join(","), ...input]);
+    assert.equal(all.status, 0, all.stderr);
+    const result = JSON.parse(all.stdout);
+    assert.deepEqual(result.results.map(row => row.trace.algorithm), allAlgorithms);
+    for (const { metrics, trace } of result.results) {
+      const replay = new TraceReplay(trace);
+      assert.deepEqual(trace.initial.map(item => item.value), input.map(Number));
+      while (replay.next()) {}
+      assert.deepEqual(replay.items.map(item => item.value), [-3, -2, 0, 0, 1, 4, 4]);
+      assert.equal(metrics.comparisons, trace.events.filter(event => event.type === "compare").length);
+    }
+  }
   const single = run(["compare", "vector", "2", "merge", ...input]);
   assert.equal(single.status, 0, single.stderr);
   const [singleRow, ...otherRows] = JSON.parse(single.stdout).results;

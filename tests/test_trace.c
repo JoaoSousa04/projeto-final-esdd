@@ -25,7 +25,7 @@ static void verify_trace(Structure kind, Algorithm algorithm, size_t size)
         }
         assert(replay_next(&replay));
         comparisons += replay.highlight.type == COMPARE;
-        moves += replay.highlight.type == MOVE;
+        moves += replay.highlight.type != COMPARE;
         assert(replay_undo(&replay));
         assert(replay.cursor == index);
         assert(replay.highlight.type == previous.type && replay.highlight.first == previous.first &&

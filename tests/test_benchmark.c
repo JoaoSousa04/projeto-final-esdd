@@ -71,7 +71,8 @@ int main(void)
             ++medians;
         }
     }
-    assert(next_task == 9 && medians == 8);
+    assert(next_task == ALGORITHM_COUNT * STRUCTURE_COUNT + 1);
+    assert(medians == ALGORITHM_COUNT * STRUCTURE_COUNT);
     fclose(output);
     return 0;
 }
