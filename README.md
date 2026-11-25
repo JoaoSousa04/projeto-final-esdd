@@ -63,3 +63,13 @@ On a GCC installation with both sanitizer runtimes available:
 ~~~sh
 make test-integration BUILD=build-sanitized CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
 ~~~
+
+## Local comparison service
+
+Build the native executable once with `mingw32-make` on Windows or `make` on Linux or macOS. Rebuild after changing the C sources. Start the local service with Node.js 18 or newer and open the address it prints:
+
+~~~powershell
+node web/serve.mjs
+~~~
+
+The service listens at `http://127.0.0.1:8080` for the session. If you built into another directory, pass the executable path, for example `node web/serve.mjs build-compare/platform.exe`. The API runs the C executable for each request and returns a comparison envelope containing the original trace v1 objects and the native metrics.

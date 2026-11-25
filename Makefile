@@ -47,6 +47,7 @@ test: all $(BUILD)/test_structures$(EXE) $(BUILD)/test_sorting$(EXE) $(BUILD)/te
 
 test-integration: test
 	$(NODE) tests/test_integration.mjs $(BUILD)/platform$(EXE)
+	$(NODE) tests/test_server.mjs $(BUILD)/platform$(EXE)
 
 $(BUILD)/test_allocation$(EXE): tests/test_allocation.c tests/alloc_hooks.h $(DATA) $(SORT) $(BENCH) $(TRACE) Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -include tests/alloc_hooks.h -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)

@@ -101,3 +101,4 @@ Após minha aprovação, implemente as melhorias aprovadas em incrementos testá
 
 A versão antiga usava C em WebAssembly e um Web Worker. A adaptação aprovada usa o executável nativo e uma ponte local em Node.js. O primeiro incremento reutiliza a rotina de medição em C para entradas explícitas e mantém o trace v1 separado da passada cronometrada.
 Validação: mingw32-make -j4 test-integration BUILD=build-compare CFLAGS="-O2 -Werror" passou. As quatro estruturas reutilizam a entrada idêntica, e as contagens do benchmark coincidem com os eventos compare. A pasta separada contornou a recusa de sobrescrita de build/platform.exe no Windows.
+Segundo incremento: web/serve.mjs serve a página na interface de loopback e encaminha parâmetros validados ao C via execFile. O teste node tests/test_server.mjs build-compare/platform.exe passou com respostas nativas, entradas inválidas, origem externa e executável ausente.
