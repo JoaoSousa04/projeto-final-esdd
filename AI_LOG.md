@@ -48,3 +48,7 @@ Codex added a GNU Make build, the C11 CLI, the README, and the architecture docu
 ### Structures (RF-01, RF-02)
 
 Codex implemented vector capacity growth and three list layouts in `src/structures/data.c`. A failed realloc leaves the original pointer and capacity intact. Tests validated all four layouts over 100 insertions, growth, item identity, closure, and destruction using `mingw32-make test CFLAGS="-O2 -Werror"`.
+
+### Sorting (RF-03)
+
+Codex added stable insertion and merge sorts in `src/sorting/sort.c`. The list implementations relink original nodes. The matrix verifies all eight combinations across six input classes, including stable identity, unchanged node addresses, and list invariants. Verification uses `mingw32-make test CFLAGS="-O2 -Werror"`.
