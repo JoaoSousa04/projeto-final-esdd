@@ -49,3 +49,17 @@ node tests/test_browser.mjs build/platform.exe
 ~~~
 
 The browser script also accepts an installed Chromium-based browser path as its second argument. On other platforms, use `make` and omit the executable's `.exe` suffix.
+
+## Validation and debugging
+
+See [validation.md](docs/validation.md) for requirement evidence, published increments, measured results, and debugger entry points. To run GCC's static analyzer with a separate build directory on Windows:
+
+~~~powershell
+mingw32-make test BUILD=build-analysis CFLAGS="-O0 -g -Werror -fanalyzer"
+~~~
+
+On a GCC installation with both sanitizer runtimes available:
+
+~~~sh
+make test-integration BUILD=build-sanitized CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer"
+~~~

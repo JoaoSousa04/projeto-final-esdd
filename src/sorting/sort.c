@@ -151,7 +151,7 @@ static void restore_list_links(Data *data)
         previous = node;
     }
     data->tail = previous;
-    if (data->kind == CIRCULAR) {
+    if (data->kind == CIRCULAR && previous != NULL) {
         data->tail->next = data->head;
     }
 }

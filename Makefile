@@ -6,7 +6,7 @@ NODE = node
 
 ifeq ($(OS),Windows_NT)
 EXE = .exe
-MKBUILD = if not exist "$(BUILD)" mkdir "$(BUILD)"
+MKBUILD = mkdir "$(BUILD)"
 else
 MKBUILD = mkdir -p "$(BUILD)"
 endif
@@ -37,12 +37,16 @@ $(BUILD)/test_benchmark$(EXE): tests/test_benchmark.c $(DATA) $(SORT) $(BENCH) M
 $(BUILD)/test_trace$(EXE): tests/test_trace.c $(DATA) $(SORT) $(TRACE) Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)
 
-test: all $(BUILD)/test_structures$(EXE) $(BUILD)/test_sorting$(EXE) $(BUILD)/test_benchmark$(EXE) $(BUILD)/test_trace$(EXE)
+test: all $(BUILD)/test_structures$(EXE) $(BUILD)/test_sorting$(EXE) $(BUILD)/test_benchmark$(EXE) $(BUILD)/test_trace$(EXE) $(BUILD)/test_allocation$(EXE)
 	$(BUILD)/platform$(EXE) --help
 	$(BUILD)/test_structures$(EXE)
 	$(BUILD)/test_sorting$(EXE)
 	$(BUILD)/test_benchmark$(EXE)
 	$(BUILD)/test_trace$(EXE)
+	$(BUILD)/test_allocation$(EXE)
 
 test-integration: test
 	$(NODE) tests/test_integration.mjs $(BUILD)/platform$(EXE)
+
+$(BUILD)/test_allocation$(EXE): tests/test_allocation.c tests/alloc_hooks.h $(DATA) $(SORT) $(BENCH) $(TRACE) Makefile | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -include tests/alloc_hooks.h -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)

@@ -232,12 +232,25 @@ static bool parse_task(const char *line, Task *task)
            structure_parse(structure, &task->structure) && parse_input(fields, &task->input);
 }
 
+static bool run_queue(TaskQueue *queue, FILE *output)
+{
+    bool success = true;
+    Task task;
+    while (queue_pop(queue, &task)) {
+        if (!run_task(task, output)) {
+            success = false;
+        }
+    }
+    return success;
+}
+
 int benchmark_batch(FILE *input, FILE *output)
 {
     TaskQueue queue = {0};
     char line[256];
     size_t id = 0;
     bool success = true;
+    report_header(output);
     while (fgets(line, sizeof(line), input) != NULL) {
         bool truncated = strlen(line) == sizeof(line) - 1 && strchr(line, '\n') == NULL;
         if (truncated) {
@@ -253,21 +266,15 @@ int benchmark_batch(FILE *input, FILE *output)
         Task task = {.id = ++id};
         task.valid = !truncated && parse_task(content, &task);
         if (!queue_push(&queue, task)) {
+            run_queue(&queue, output);
             fprintf(output, "task-error,%zu,queue-allocation-error\n", id);
             success = false;
-            break;
         }
     }
     if (ferror(input)) {
         fputs("batch-error,input-read-error\n", output);
         success = false;
     }
-    report_header(output);
-    Task task;
-    while (queue_pop(&queue, &task)) {
-        if (!run_task(task, output)) {
-            success = false;
-        }
-    }
-    return success && !ferror(output) ? 0 : 1;
+    bool queued_success = run_queue(&queue, output);
+    return success && queued_success && !ferror(output) ? 0 : 1;
 }

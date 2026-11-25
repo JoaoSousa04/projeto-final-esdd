@@ -61,3 +61,11 @@ Codex implemented reproducible input generation, monotonic timing, memory estima
 
 Codex instrumented the real sort operations, wrote the versioned JSON contract, and implemented the C undo stack and a static local viewer. The sorting core emits a logical move for an insertion or a merge selection from the right half. No extra swap events were added. The C and JavaScript checks advance and undo comparisons and moves, verify empty and single-item inputs, and compare replay with the actual C output for all eight combinations.
 Verification: strict GCC C tests, Node integration across 24 generated traces, and headless Chrome for all eight combinations. Chrome also checked highlight changes, move undo, autoplay, empty input, malformed JSON, and unsupported schema versions.
+
+### Integration and allocation failures (RF-01, RF-06, RNF-04)
+
+Codex tested allocation failures without changing the production allocator. The test build intercepts allocation calls in vector growth, list append, merge scratch, trace construction, history, and the FIFO. It verifies that owned blocks return to zero after cleanup.
+
+The clean build exposed a Make recipe that assumed cmd.exe on Windows. Codex replaced the conditional command with a mkdir recipe supported by the selected shell. GCC's analyzer also identified a possible null tail in the unspecialized list-restoration helper. Codex guarded circular closure when there is no tail. The allocator test exposed out-of-order reporting on a failed enqueue. The batch now drains older queued work before reporting the failed task and continues reading later tasks.
+
+Verification passed in a clean source copy with strict GCC, Node.js, and headless Chrome. GCC -fanalyzer and the five C test executables under Application Verifier Heaps also passed. The GCC and Visual Studio sanitizer link attempts could not find their runtime libraries. The validation report records the environment, actual benchmark results, and the remaining team review.
