@@ -19,5 +19,9 @@ $(BUILD):
 $(BUILD)/platform$(EXE): src/main.c Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -o $@ src/main.c $(LDFLAGS) $(LDLIBS)
 
-test: all
+test: all $(BUILD)/test_structures$(EXE)
 	$(BUILD)/platform$(EXE) --help
+	$(BUILD)/test_structures$(EXE)
+
+$(BUILD)/test_structures$(EXE): tests/test_structures.c src/structures/data.c src/structures/data.h Makefile | $(BUILD)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)

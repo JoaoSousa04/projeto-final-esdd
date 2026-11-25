@@ -44,3 +44,7 @@ Ao concluir, informe a branch remota e os commits publicados por incremento. Apr
 ### Base (RNF-01, RNF-02, RNF-03)
 
 Codex added a GNU Make build, the C11 CLI, the README, and the architecture document. Only the plan was present initially. GNU Make was selected after finding GCC and mingw32-make on Windows. Verified with a strict GCC build and the CLI smoke test.
+
+### Structures (RF-01, RF-02)
+
+Codex implemented vector capacity growth and three list layouts in `src/structures/data.c`. A failed realloc leaves the original pointer and capacity intact. Tests validated all four layouts over 100 insertions, growth, item identity, closure, and destruction using `mingw32-make test CFLAGS="-O2 -Werror"`.
