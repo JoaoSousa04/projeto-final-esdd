@@ -24,7 +24,7 @@ try {
   const next = page.getByRole("button", { name: "Next" });
   const undo = page.getByRole("button", { name: "Undo" });
   const status = page.locator("#status");
-  const bars = page.locator(".bar");
+  const bars = page.locator("#bars .bar");
   const items = () => bars.evaluateAll(nodes => nodes.map(node => ({
     id: Number(node.dataset.id),
     value: Number(node.dataset.value),
@@ -91,6 +91,12 @@ try {
   const size = page.getByLabel("Input size");
   const values = page.getByLabel(/Input values/);
   const compare = page.getByRole("button", { name: /^(Compare|Run algorithm)$/ });
+  const restart = page.getByRole("button", { name: "Restart" });
+  const playerSpeed = page.getByRole("combobox", { name: "Speed" });
+  const play = page.getByRole("button", { name: "Play", exact: true });
+  const plots = page.locator(".comparison-plot");
+  const plotItems = algorithm => page.locator(`.comparison-plot[data-algorithm="${algorithm}"] .bar`)
+    .evaluateAll(nodes => nodes.map(node => ({ id: Number(node.dataset.id), value: Number(node.dataset.value) })));
   await size.fill("3");
   await compare.click();
   assert.match(await page.locator("#comparison-error").innerText(), /3.*7/);
@@ -121,6 +127,8 @@ try {
     assert.deepEqual(responseData.input, expectedInput);
     assert.equal(responseData.structure, expectedStructure);
     await page.getByRole("table", { name: "Native C results" }).waitFor();
+    assert.equal(await plots.count(), responseData.results.length);
+    await restart.click();
     for (const { trace, metrics } of responseData.results) {
       assert.equal(trace.structure, expectedStructure);
       assert.deepEqual(trace.initial, expectedInput.map((value, id) => ({ value, id })));
@@ -129,16 +137,21 @@ try {
         metrics.medianMs.toFixed(6), String(metrics.comparisons), String(metrics.structureBytes),
         String(metrics.auxiliaryBytes), String(metrics.peakBytes),
       ]);
-      const name = trace.algorithm === "insertion" ? "Insertion Sort" : "Merge Sort";
-      await page.getByRole("button", { name: `Replay ${name}` }).click();
-      assert.deepEqual(await items(), trace.initial);
-      for (const event of trace.events) await next.click();
-      assert.deepEqual(await items(), trace.final);
+      assert.deepEqual(await plotItems(trace.algorithm), trace.initial);
       assert.deepEqual(trace.final.map(item => item.value), [...expectedInput].sort((a, b) => a - b));
-      if (trace.events.length > 0) {
-        await undo.click();
-        assert.equal(await next.isEnabled(), true);
-      }
+    }
+    await next.click();
+    assert.equal(await page.locator("#playback-progress").evaluate(element => element.value), 1);
+    assert.ok((await plots.locator(".plot-status").allTextContents()).every(text => text.startsWith("1 /")));
+    await undo.click();
+    for (const { trace } of responseData.results) {
+      assert.deepEqual(await plotItems(trace.algorithm), trace.initial);
+    }
+    await playerSpeed.selectOption("4");
+    await play.click();
+    await page.waitForFunction(() => document.querySelector("#next").disabled);
+    for (const { trace } of responseData.results) {
+      assert.deepEqual(await plotItems(trace.algorithm), trace.final);
     }
     return responseData;
   }
@@ -157,8 +170,8 @@ try {
   assert.deepEqual(await page.locator("#chart-bars strong").allTextContents(),
     manual.results.map(row => `${row.metrics.auxiliaryBytes} B`));
 
-  await page.getByRole("button", { name: "Replay Merge Sort" }).click();
-  const playerSpeed = page.getByRole("combobox", { name: "Speed" });
+  const pairWidth = (await plots.first().boundingBox()).width;
+  await restart.click();
   await page.evaluate(() => {
     window.scheduledDelays = [];
     const original = window.setTimeout;
@@ -172,7 +185,7 @@ try {
   await playerSpeed.selectOption("4");
   await page.waitForFunction(() => document.querySelector("#next").disabled);
   assert.deepEqual(await page.evaluate(() => [...new Set(window.scheduledDelays)]), [480, 60]);
-  assert.deepEqual(await items(), manual.results[1].trace.final);
+  assert.deepEqual(await plotItems("merge"), manual.results[1].trace.final);
 
   await size.fill("4");
   await page.getByRole("combobox", { name: "Structure", exact: true }).selectOption("circular");
@@ -181,12 +194,35 @@ try {
   assert.equal(generated.length, 4);
   assert.ok(generated.every(value => Number.isInteger(value) && value >= -100 && value <= 100));
   await compareFromPage(generated, "circular");
+  for (const name of ["Bubble Sort", "Heap Sort", "Quick Sort", "Selection Sort"]) {
+    await page.getByRole("checkbox", { name }).check();
+  }
+  await size.fill("7");
+  await values.fill("4, -2, 4, 0, -3, 1, 0");
+  const six = await compareFromPage([4, -2, 4, 0, -3, 1, 0], "circular");
+  assert.deepEqual(six.results.map(row => row.trace.algorithm),
+    ["bubble", "heap", "insertion", "merge", "quick", "selection"]);
+  assert.equal(await page.locator("#chart-bars li").count(), 6);
+  const dimensions = () => plots.evaluateAll(panels => panels.map(panel => {
+    const rect = panel.getBoundingClientRect();
+    return { top: rect.top, width: rect.width };
+  }));
+  const desktop = await dimensions();
+  assert.equal(new Set(desktop.map(panel => panel.top)).size, 1);
+  assert.ok(desktop.every(panel => panel.width < pairWidth));
+  const longest = Math.max(...six.results.map(row => row.trace.events.length));
+  await undo.click();
+  for (const { trace } of six.results.filter(row => row.trace.events.length < longest)) {
+    assert.deepEqual(await plotItems(trace.algorithm), trace.final);
+  }
+
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-  assert.equal(await page.locator("#chart-bars li").count(), 2);
+  assert.equal(new Set((await dimensions()).map(panel => panel.top)).size, 3);
+  assert.equal(await plots.count(), 6);
 
   assert.deepEqual(errors, []);
-  console.log("Browser comparison passed: manual and random input, matching native metrics and traces.");
+  console.log("Browser comparison passed: synchronized single, pair and six-plot runs, native metrics, speed and responsive layout.");
   console.log("Browser passed: eight C traces, comparison highlights, move undo, autoplay, and file validation.");
 } finally {
   await browser.close();

@@ -12,7 +12,7 @@
   <main>
     <header>
       <h1>Sorting Trace Viewer</h1>
-      <p class="intro">Choose your input, measure an individual run or compare algorithms, then replay the steps.</p>
+      <p class="intro">Compare how algorithms reorder the same input.</p>
     </header>
 
     <section id="comparison" aria-labelledby="comparison-heading">
@@ -41,8 +41,14 @@
         <p class="sequence">Input preview <output id="preview" for="vector-size values"></output></p>
         <fieldset>
           <legend>Algorithms</legend>
-          <label><input type="checkbox" name="algorithms" value="insertion" checked> Insertion Sort</label>
-          <label><input type="checkbox" name="algorithms" value="merge" checked> Merge Sort</label>
+          <div class="algorithm-options">
+            <label><input type="checkbox" name="algorithms" value="bubble"> Bubble Sort</label>
+            <label><input type="checkbox" name="algorithms" value="heap"> Heap Sort</label>
+            <label><input type="checkbox" name="algorithms" value="insertion" checked> Insertion Sort</label>
+            <label><input type="checkbox" name="algorithms" value="merge" checked> Merge Sort</label>
+            <label><input type="checkbox" name="algorithms" value="quick"> Quick Sort</label>
+            <label><input type="checkbox" name="algorithms" value="selection"> Selection Sort</label>
+          </div>
         </fieldset>
         <button id="compare" type="submit">Compare</button>
         <p id="comparison-status" aria-live="polite"></p>
@@ -73,7 +79,6 @@
               <th scope="col">Structure (B)</th>
               <th scope="col">Auxiliary (B)</th>
               <th scope="col">Peak (B)</th>
-              <th scope="col">Animation</th>
             </tr></thead>
             <tbody id="result-rows"></tbody>
           </table>
@@ -89,6 +94,7 @@
           <button id="previous" type="button">Undo</button>
           <button id="next" type="button">Next</button>
           <button id="play" type="button">Play</button>
+          <button id="restart" type="button">Restart</button>
           <div class="speed-control">
             <label for="playback-speed">Speed</label>
             <select id="playback-speed">
@@ -103,8 +109,9 @@
       <progress id="playback-progress" aria-label="Playback progress" value="0" max="1"></progress>
       <p id="status" role="status"></p>
       <div class="plot">
-        <ol id="bars" aria-label="Current value sequence"></ol>
+        <ol id="bars" class="bars" aria-label="Current value sequence"></ol>
       </div>
+      <div id="comparison-plots" class="plot-grid" hidden></div>
     </section>
 
     <section class="trace-import" aria-label="Import saved trace">

@@ -3,20 +3,22 @@
 const fileInput = document.getElementById("trace-file");
 const viewer = document.getElementById("viewer");
 const bars = document.getElementById("bars");
+const plots = document.getElementById("comparison-plots");
 const error = document.getElementById("error");
 const statusLabel = document.getElementById("status");
 const origin = document.getElementById("origin");
 const previous = document.getElementById("previous");
 const next = document.getElementById("next");
 const play = document.getElementById("play");
-let replay;
-let timer;
-let loadSequence = 0;
+const restart = document.getElementById("restart");
 const speed = document.getElementById("playback-speed");
 const progress = document.getElementById("playback-progress");
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-const barNodes = new Map();
-let highlighted = new Set();
+let players = [];
+let step = 0;
+let total = 0;
+let timer;
+let loadSequence = 0;
 
 function stepDelay() {
   return 240 / Number(speed.value);
@@ -34,90 +36,169 @@ function eventLabel(event) {
   return `Swap positions ${event.from + 1} and ${event.to + 1}`;
 }
 
-function setupBars() {
-  barNodes.clear();
-  highlighted = new Set();
-  const scale = 36 / replay.items.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
-  const fragment = document.createDocumentFragment();
-  for (const item of replay.items) {
-    const bar = document.createElement("li");
-    bar.className = "bar";
-    bar.dataset.id = item.id;
-    bar.dataset.value = item.value;
-    bar.title = `Item #${item.id}`;
-    bar.style.setProperty("--height", `${Math.abs(item.value) * scale}%`);
-    bar.style.setProperty("--bottom", `${50 + Math.min(item.value, 0) * scale}%`);
-    const label = document.createElement("span");
-    label.textContent = item.value;
-    bar.append(label);
-    barNodes.set(item.id, bar);
-    fragment.append(bar);
+class TracePlot {
+  constructor(trace, list, status = null) {
+    this.replay = new TraceReplay(trace);
+    this.list = list;
+    this.status = status;
+    this.nodes = new Map();
+    this.setupBars();
   }
-  bars.replaceChildren(fragment);
-}
 
-function reorderBars(event) {
-  if (!event || event.type === "compare") return;
-  const start = Math.min(event.from, event.to);
-  const end = Math.max(event.from, event.to);
-  const affected = replay.items.slice(start, end + 1).map(item => barNodes.get(item.id));
-  const positions = reducedMotion.matches ? [] : affected.map(bar => bar.getBoundingClientRect().left);
-  const fragment = document.createDocumentFragment();
-  const anchor = bars.children[end + 1] ?? null;
-  for (const bar of affected) {
-    for (const animation of bar.getAnimations()) animation.cancel();
-    fragment.append(bar);
+  setupBars() {
+    this.nodes.clear();
+    this.renderedCursor = -1;
+    this.highlighted = new Set();
+    const { items } = this.replay;
+    const scale = 36 / items.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
+    this.list.classList.toggle("dense-bars", items.length > 15);
+    const fragment = document.createDocumentFragment();
+    for (const item of items) {
+      const bar = document.createElement("li");
+      bar.className = "bar";
+      bar.dataset.id = item.id;
+      bar.dataset.value = item.value;
+      bar.title = `${item.value} · Item #${item.id}`;
+      bar.setAttribute("aria-label", bar.title);
+      bar.style.setProperty("--height", `${Math.abs(item.value) * scale}%`);
+      bar.style.setProperty("--bottom", `${50 + Math.min(item.value, 0) * scale}%`);
+      const label = document.createElement("span");
+      label.textContent = item.value;
+      bar.append(label);
+      this.nodes.set(item.id, bar);
+      fragment.append(bar);
+    }
+    this.list.replaceChildren(fragment);
   }
-  bars.insertBefore(fragment, anchor);
-  if (positions.length) {
-    const offsets = affected.map((bar, index) => positions[index] - bar.getBoundingClientRect().left);
-    affected.forEach((bar, index) => {
-      if (offsets[index] !== 0) {
-        bar.animate([{ transform: `translateX(${offsets[index]}px)` }, { transform: "none" }],
-          { duration: Math.min(240, stepDelay() * 0.85), easing: "cubic-bezier(.2,.65,.35,1)" });
+
+  prepareReorder(event) {
+    if (!event || event.type === "compare") return null;
+    const start = Math.min(event.from, event.to);
+    const end = Math.max(event.from, event.to);
+    const { items } = this.replay;
+    const affected = (event.type === "swap" ? [items[start], items[end]] : items.slice(start, end + 1))
+      .map(item => this.nodes.get(item.id));
+    const positions = reducedMotion.matches ? [] : affected.map(bar => bar.getBoundingClientRect().left);
+    const anchor = this.list.children[end + 1] ?? null;
+    return () => {
+      for (const bar of affected) {
+        for (const animation of bar.getAnimations()) animation.cancel();
       }
-    });
+      if (event.type === "swap") {
+        this.list.insertBefore(affected[1], anchor);
+        this.list.insertBefore(affected[0], this.list.children[start]);
+      } else {
+        const fragment = document.createDocumentFragment();
+        fragment.append(...affected);
+        this.list.insertBefore(fragment, anchor);
+      }
+      if (!positions.length) return null;
+      return () => {
+        const offsets = affected.map((bar, index) => positions[index] - bar.getBoundingClientRect().left);
+        return () => affected.forEach((bar, index) => {
+          if (offsets[index] !== 0) {
+            bar.animate([{ transform: `translateX(${offsets[index]}px)` }, { transform: "none" }],
+              { duration: Math.min(240, stepDelay() * 0.85), easing: "cubic-bezier(.2,.65,.35,1)" });
+          }
+        });
+      };
+    };
+  }
+
+  render() {
+    const { highlight: event, items, cursor, trace } = this.replay;
+    if (cursor === this.renderedCursor) return;
+    this.renderedCursor = cursor;
+    const selected = new Set();
+    if (event?.type === "compare") {
+      selected.add(event.leftId).add(event.rightId);
+    } else if (event?.type === "move") {
+      selected.add(event.id);
+    } else if (event?.type === "swap") {
+      selected.add(items[event.from].id).add(items[event.to].id);
+    }
+    for (const id of this.highlighted) {
+      if (!selected.has(id)) this.nodes.get(id).classList.remove("selected");
+    }
+    for (const id of selected) {
+      if (!this.highlighted.has(id)) this.nodes.get(id).classList.add("selected");
+    }
+    this.highlighted = selected;
+    if (this.status) {
+      const finished = cursor === trace.events.length;
+      this.status.textContent = `${cursor} / ${trace.events.length}${finished ? " · Finished" : ""}`;
+      this.status.title = eventLabel(event);
+      this.status.classList.toggle("finished", finished);
+    }
   }
 }
 
-function render() {
-  const event = replay.highlight;
-  const selected = new Set();
-  if (event?.type === "compare") {
-    selected.add(event.leftId).add(event.rightId);
-  } else if (event?.type === "move") {
-    selected.add(event.id);
-  } else if (event?.type === "swap") {
-    selected.add(replay.items[event.from].id).add(replay.items[event.to].id);
-  }
-  for (const id of highlighted) {
-    if (!selected.has(id)) barNodes.get(id).classList.remove("selected");
-  }
-  for (const id of selected) {
-    if (!highlighted.has(id)) barNodes.get(id).classList.add("selected");
-  }
-  highlighted = selected;
-  const count = replay.trace.events.length;
-  const atEnd = replay.cursor === count;
-  progress.max = Math.max(1, count);
-  progress.value = count === 0 ? 1 : replay.cursor;
-  statusLabel.textContent = `Step ${replay.cursor} of ${count} · ${eventLabel(event)}${atEnd ? " · Finished" : ""}`;
-  previous.disabled = replay.cursor === 0;
+function renderControls() {
+  for (const player of players) player.render();
+  const atEnd = step === total;
+  const detail = players.length === 1 ? ` · ${eventLabel(players[0].replay.highlight)}` : "";
+  progress.max = Math.max(1, total);
+  progress.value = total === 0 ? 1 : step;
+  statusLabel.textContent = `Step ${step} of ${total}${detail}${atEnd ? " · Finished" : ""}`;
+  previous.disabled = step === 0;
   next.disabled = atEnd;
+  restart.disabled = step === 0 && timer === undefined;
   play.disabled = atEnd;
   play.textContent = timer === undefined ? "Play" : "Pause";
 }
 
-function showTrace(trace, label) {
-  const loaded = new TraceReplay(trace);
+function startSession(newPlayers, label, autoplay) {
   ++loadSequence;
   stop();
-  replay = loaded;
-  origin.textContent = `${label} · ${trace.algorithm} sort · ${trace.structure}`;
-  setupBars();
+  players = newPlayers;
+  step = 0;
+  total = Math.max(...players.map(player => player.replay.trace.events.length));
+  origin.textContent = label;
   viewer.hidden = false;
   error.hidden = true;
-  render();
+  if (autoplay && total > 0) timer = setTimeout(forward, stepDelay());
+  renderControls();
+}
+
+function showTrace(trace, label) {
+  const player = new TracePlot(trace, bars);
+  plots.replaceChildren();
+  plots.hidden = true;
+  bars.parentElement.hidden = false;
+  startSession([player], `${label} · ${trace.algorithm} sort · ${trace.structure}`, false);
+}
+
+function showComparisonPlots(results) {
+  const fragment = document.createDocumentFragment();
+  const newPlayers = results.map(({ trace }) => {
+    const panel = document.createElement("section");
+    panel.className = "comparison-plot";
+    panel.dataset.algorithm = trace.algorithm;
+    const label = algorithmLabels[trace.algorithm];
+    const title = document.createElement("h3");
+    title.textContent = label;
+    const plot = document.createElement("div");
+    plot.className = "plot";
+    const list = document.createElement("ol");
+    list.className = "bars";
+    list.setAttribute("aria-label", `${label} value sequence`);
+    plot.append(list);
+    const status = document.createElement("p");
+    status.className = "plot-status";
+    panel.append(title, plot, status);
+    fragment.append(panel);
+    return new TracePlot(trace, list, status);
+  });
+
+  bars.replaceChildren();
+  bars.parentElement.hidden = true;
+  plots.replaceChildren(fragment);
+  plots.style.setProperty("--plot-count", String(newPlayers.length));
+  plots.style.setProperty("--plot-count-medium", String(Math.min(3, newPlayers.length)));
+  plots.style.setProperty("--plot-count-small", String(Math.min(2, newPlayers.length)));
+  plots.hidden = false;
+  startSession(newPlayers, newPlayers.length === 1 ? "Algorithm playback" : "Synchronized playback", true);
+  viewer.scrollIntoView({ block: "nearest" });
 }
 
 fileInput.addEventListener("change", async () => {
@@ -139,14 +220,36 @@ fileInput.addEventListener("change", async () => {
   }
 });
 
+function advancePlots(backward) {
+  const changes = [];
+  for (const player of players) {
+    const { replay } = player;
+    let event;
+    if (backward) {
+      if (replay.cursor !== step) continue;
+      event = replay.highlight;
+      replay.undo();
+    } else if (replay.next()) {
+      event = replay.highlight;
+    }
+    const change = player.prepareReorder(event);
+    if (change) changes.push(change);
+  }
+  // Batch geometry reads and DOM updates across plots.
+  const readOffsets = changes.map(change => change()).filter(Boolean);
+  const animate = readOffsets.map(read => read());
+  for (const start of animate) start();
+  step += backward ? -1 : 1;
+}
+
 function forward() {
-  if (replay.next()) reorderBars(replay.highlight);
-  if (replay.cursor === replay.trace.events.length) {
+  if (step < total) advancePlots(false);
+  if (step === total) {
     stop();
   } else if (timer !== undefined) {
     timer = setTimeout(forward, stepDelay());
   }
-  render();
+  renderControls();
 }
 
 next.addEventListener("click", () => {
@@ -155,9 +258,17 @@ next.addEventListener("click", () => {
 });
 previous.addEventListener("click", () => {
   stop();
-  const event = replay.highlight;
-  if (replay.undo()) reorderBars(event);
-  render();
+  if (step > 0) advancePlots(true);
+  renderControls();
+});
+restart.addEventListener("click", () => {
+  stop();
+  step = 0;
+  for (const player of players) {
+    player.replay.reset();
+    player.setupBars();
+  }
+  renderControls();
 });
 play.addEventListener("click", () => {
   if (timer === undefined) {
@@ -165,7 +276,7 @@ play.addEventListener("click", () => {
   } else {
     stop();
   }
-  render();
+  renderControls();
 });
 
 speed.addEventListener("change", () => {
@@ -283,24 +394,16 @@ function showResults(result) {
       metrics.structureBytes, metrics.auxiliaryBytes, metrics.peakBytes]) {
       row.insertCell().textContent = value;
     }
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "Replay";
-    button.setAttribute("aria-label", `Replay ${label}`);
-    button.addEventListener("click", () => {
-      showTrace(trace, "Native C comparison");
-      viewer.scrollIntoView({ block: "nearest" });
-    });
-    row.insertCell().append(button);
     rows.append(row);
   }
-  showTrace(result.results[0].trace, "Native C comparison");
+
   currentResults = result.results;
   document.getElementById("results-heading").textContent = currentResults.length === 1 ? "Run result" : "Comparison results";
   renderChart();
   resultRows.replaceChildren(rows);
   resultInput.textContent = `${result.structure} · ${result.repetitions} repetitions · [${result.input.join(", ")}]`;
   resultPanel.hidden = false;
+  showComparisonPlots(result.results);
 }
 
 form.addEventListener("submit", async event => {
@@ -317,6 +420,8 @@ form.addEventListener("submit", async event => {
     const structure = document.getElementById("structure").value;
     const repetitions = document.getElementById("repetitions").valueAsNumber;
     compare.disabled = true;
+    stop();
+    viewer.hidden = true;
     resultPanel.hidden = true;
     comparisonStatus.textContent = "Running the C comparison…";
     let response;
