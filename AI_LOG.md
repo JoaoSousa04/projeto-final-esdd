@@ -1,0 +1,46 @@
+# AI log
+
+## Initial implementation request
+
+````text
+Implemente neste repositório a primeira versão da Plataforma de Análise de Estruturas e Algoritmos. Leia o plan.md inteiro antes de editar os arquivos. Use os requisitos, as dependências e os critérios de aceite do plano para conduzir o trabalho.\
+\
+Você é responsável pela implementação inicial, pelos testes, pela documentação e pelo versionamento de cada incremento no Git/GitHub. A equipe ficará responsável por analisar o código e as métricas, reproduzir e depurar problemas, validar as correções e se preparar para a arguição individual.\
+\
+## Antes de começar\
+\
+1\. Inspecione o repositório, as instruções locais, a configuração de build e as convenções existentes. Se o repositório estiver vazio, crie a estrutura inicial prevista no plan.md.\
+2\. Confira o estado do Git, a branch atual e o remoto configurado. Preserve as alterações locais da equipe. Siga o fluxo de branches do projeto. Se não houver um fluxo definido, use a branch `feat/sorting-benchmark-platform` e publique os incrementos nela.\
+3\. Confirme o destino do push a partir da configuração do repositório. Se houver mais de um destino plausível, solicite o remoto correto antes de publicar.\
+\
+## Versionamento obrigatório a cada incremento\
+\
+A cada incremento funcional concluído, execute este ciclo antes de iniciar o próximo:\
+\
+1\. Rode os testes aplicáveis ao incremento.\
+2\. Revise o diff e adicione ao Git somente os arquivos correspondentes à mudança. Mantenha alterações alheias, credenciais, binários compilados e arquivos temporários fora do commit.\
+3\. Faça um commit que descreva a mudança. Siga o padrão de mensagens do repositório. Se não houver um, use mensagens em inglês como `feat: add dynamic vector and linked lists` e `feat: implement FIFO batch processing`.\
+4\. Envie o commit ao repositório remoto com `git push`. Configure o upstream no primeiro push da branch, se necessário.\
+5\. Confirme que o commit chegou à branch remota e registre seu hash, a branch, os requisitos atendidos e os testes executados.\
+\
+Divida etapas grandes em incrementos testáveis. Se um teste falhar, diagnostique, corrija e repita a verificação antes de publicar o incremento. Se o push falhar, identifique a causa e tente resolvê-la preservando o histórico e as mudanças da equipe. Se faltar uma URL, credencial ou permissão, mantenha o commit local, informe o bloqueio e identifique os commits pendentes de envio. Siga as regras de proteção das branches e evite `force push`.\
+\
+## Ordem de implementação\
+\
+1\. Prepare o build, a CLI inicial, o README.md, a documentação de arquitetura e o AI_LOG.md. Registre este prompt no AI_LOG.md.\
+2\. Implemente em C o vetor dinâmico e as listas simplesmente encadeada, duplamente encadeada e circular. Garanta que os recursos sejam liberados e que os encadeamentos permaneçam válidos.\
+3\. Implemente Insertion Sort e Merge Sort nas quatro estruturas. Nas listas, ordene religando os nós. Teste as oito combinações com entradas vazias, unitárias, ordenadas, inversas, com duplicatas e com números negativos. Verifique a preservação dos elementos e os invariantes.\
+4\. Implemente o benchmark comparativo e a fila FIFO para testes em lote. Use entradas equivalentes e reproduzíveis. Meça tempo, memória e comparações conforme o plan.md e verifique a ordem de execução da fila.\
+5\. Implemente o modo passo a passo com pilha em C para Desfazer. Exporte em JSON os eventos produzidos pelo algoritmo e implemente o visualizador em HTML, CSS e JavaScript. Teste a reversão dos eventos e confira se a reprodução no navegador termina na mesma sequência produzida pelo executável C.\
+6\. Execute os testes de integração e as verificações de memória disponíveis. Atualize a documentação com os comandos e os resultados reais. Escreva o README.md, os comentários e os nomes de variáveis e funções em inglês. Mantenha o AI_LOG.md atualizado com os prompts relevantes, as adaptações e as correções realizadas.\
+\
+Priorize RF-01 a RF-07 e RNF-01 a RNF-04. A tabela hash (RF-08) é o extra previsto no plano e pode ser implementada após os requisitos obrigatórios. Para detalhes de implementação que não estejam definidos, adote decisões reversíveis, documente-as e prossiga. Use código legível que a equipe consiga explicar na arguição.\
+\
+## Entrega\
+\
+Ao concluir, informe a branch remota e os commits publicados por incremento. Apresente o status de cada requisito com a respectiva evidência. Inclua os comandos para compilar, rodar os testes, executar um benchmark em lote e carregar no visualizador um JSON gerado pelo executável C. Indique os arquivos e funções que a equipe deve inspecionar para depurar as ordenações, a fila e o Desfazer. Identifique as verificações que ainda dependem da equipe.
+````
+
+### Base (RNF-01, RNF-02, RNF-03)
+
+Codex added a GNU Make build, the C11 CLI, the README, and the architecture document. Only the plan was present initially. GNU Make was selected after finding GCC and mingw32-make on Windows. Verified with a strict GCC build and the CLI smoke test.
