@@ -52,3 +52,7 @@ Codex implemented vector capacity growth and three list layouts in `src/structur
 ### Sorting (RF-03)
 
 Codex added stable insertion and merge sorts in `src/sorting/sort.c`. The list implementations relink original nodes. The matrix verifies all eight combinations across six input classes, including stable identity, unchanged node addresses, and list invariants. Verification uses `mingw32-make test CFLAGS="-O2 -Werror"`.
+
+### Benchmark and batch (RF-04, RF-06)
+
+Codex implemented reproducible input generation, monotonic timing, memory estimates, reference validation, and the FIFO queue in src/benchmark and src/structures/queue.c. The C test checks eight comparison tasks and a three-task batch with an invalid middle record. The sample batch uses identical configurations across all eight combinations.

@@ -1,0 +1,9 @@
+# algorithm structure size profile seed repetitions
+insertion vector 1000 random 42 5
+insertion singly 1000 random 42 5
+insertion doubly 1000 random 42 5
+insertion circular 1000 random 42 5
+merge vector 1000 random 42 5
+merge singly 1000 random 42 5
+merge doubly 1000 random 42 5
+merge circular 1000 random 42 5
