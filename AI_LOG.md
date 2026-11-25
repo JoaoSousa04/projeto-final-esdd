@@ -70,9 +70,9 @@ The clean build exposed a Make recipe that assumed cmd.exe on Windows. Codex rep
 
 Verification passed in a clean source copy with strict GCC, Node.js, and headless Chrome. GCC -fanalyzer and the five C test executables under Application Verifier Heaps also passed. The GCC and Visual Studio sanitizer link attempts could not find their runtime libraries. The validation report records the environment, actual benchmark results, and the remaining team review.
 
-## Comparação pela página
+## Browser comparison
 
-Prompt aprovado para implementação
+Approved implementation prompt
 
 ```text
 Analise como aproximar a versão inicial da Plataforma de Análise de Estruturas e Algoritmos da experiência que tínhamos na versão antiga. Use o ZIP da versão antiga como referência e examine o repositório atual e o plan.md.
@@ -99,26 +99,26 @@ Apresente primeiro a solução mais simples que atende ao fluxo, os arquivos que
 Após minha aprovação, implemente as melhorias aprovadas em incrementos testáveis. Para cada incremento, execute os testes, revise o diff, faça o commit, envie-o à branch remota e confirme a publicação. Atualize o AI_LOG.md com os prompts e as adaptações efetivamente realizadas.
 ```
 
-A versão antiga usava C em WebAssembly e um Web Worker. A adaptação aprovada usa o executável nativo e uma ponte local em Node.js. O primeiro incremento reutiliza a rotina de medição em C para entradas explícitas e mantém o trace v1 separado da passada cronometrada.
-Validação: mingw32-make -j4 test-integration BUILD=build-compare CFLAGS="-O2 -Werror" passou. As quatro estruturas reutilizam a entrada idêntica, e as contagens do benchmark coincidem com os eventos compare. A pasta separada contornou a recusa de sobrescrita de build/platform.exe no Windows.
-Segundo incremento: web/serve.mjs serve a página na interface de loopback e encaminha parâmetros validados ao C via execFile. O teste node tests/test_server.mjs build-compare/platform.exe passou com respostas nativas, entradas inválidas, origem externa e executável ausente.
-Terceiro incremento: formulário com tamanho, prévia, entrada manual ou aleatória, estrutura e algoritmos. A tabela usa as métricas do C e o player reaproveita o trace v1. Durante os testes, a importação passou a trazer o player à vista e o seletor de estrutura recebeu um rótulo independente. A suíte completa em C e Node.js passou, e o Chrome headless confirmou entrada manual e aleatória, igualdade da entrada, métricas da API, animação e regressão da importação.
+The earlier version compiled C to WebAssembly and used a Web Worker. The approved approach uses the native executable and a local Node.js bridge. The first increment reused the C measurement routine for explicit inputs and generated trace v1 separately from timed runs.
+`mingw32-make -j4 test-integration BUILD=build-compare CFLAGS="-O2 -Werror"` passed. All four structures used identical input, and the comparison counts matched the `compare` events. A separate build directory worked around a Windows error when overwriting `build/platform.exe`.
+The second increment added `web/serve.mjs` to serve the page on the loopback interface and pass validated arguments to the C executable through `execFile`. The test `node tests/test_server.mjs build-compare/platform.exe` passed for native responses, invalid inputs, requests from another origin, and a missing executable.
+The third increment added controls for input size, a preview, manual or random values, the data structure, and algorithm selection. The table displays C metrics, and the player reuses trace v1. During testing, trace import began scrolling the player into view, and the structure selector received a separate label. The full C and Node.js suite passed. Headless Chrome verified manual and random inputs, identical inputs across algorithms, API metrics, animations, and trace import.
 
-### Execução individual e experiência de comparação
+### Single-algorithm runs and comparison playback
 
 ```text
 Já temos algo melhor, porém em comparação a versão antiga nossa plataforma não aceita a execução de apenas um algoritmo de ordenação, não apresenta o gráfico de comparação de todos os algoritmos selecionados e a animação não é fluída, além de não ter um controle de velocidade de animação que o projeto antigo tinha. A plataforma precisa entregar, além de otimização, conceitos de UX e UI também, a plataforma precisa ser completa e agradável ao usuário, e ainda não está assim
 ```
 
-A CLI, a API e o formulário passaram a aceitar um ou mais algoritmos distintos. O painel acrescenta o gráfico das métricas nativas, e o player conserva barras por ID, atualiza apenas os destaques nas comparações e anima o intervalo afetado nos movimentos. O ritmo e a duração da transição acompanham o seletor de velocidade.
-Validação: mingw32-make -j4 test-integration BUILD=build-ux CFLAGS="-O2 -Werror" passou, incluindo execução individual pela CLI e API. O Chrome headless passou após ajustar o seletor do teste para Play exato. O teste verificou gráfico com um e dois algoritmos, valores e proporções, troca de velocidade durante a reprodução, progresso, importação de traces e ausência de rolagem horizontal da página a 390 px.
+The CLI, API, and form began accepting one or more distinct algorithms. The results panel gained a chart for native metrics. The player reuses bars by item ID, updates only highlights during comparisons, and animates the affected range during moves. The speed control sets the playback interval and transition duration.
+`mingw32-make -j4 test-integration BUILD=build-ux CFLAGS="-O2 -Werror"` passed, including single-algorithm runs through the CLI and API. The headless Chrome suite passed after updating the test to match the exact Play button label. It checked the chart with one and two algorithms, chart values and proportions, speed changes during playback, progress, trace import, and the absence of horizontal page scrolling at 390 px.
 
-### Seis algoritmos e reprodução lado a lado
+### Six algorithms and side-by-side playback
 
 ```text
 Certo, os botões de velocidade foram adicionados, porém como informei, a versão antiga ao clicar para comparar ele gerava um gráfico para cada algoritmo selecionado. Além disso, a versão antiga tinha as seguintes opções de algoritmos: bubble sort, heap sort, insertion sort, merge, quick, selection. O que queremos agora é que a plataforma gere um gráfico para cada algoritmo selecionado quando clicar em compare, e que cada gráfico tenha sua animação, para que o usuário tenha um feedback visual da comparação entre os algoritmos. Além disso, a versão antiga era responsiva dependendo de quantos algoritmos eram selecionados, quanto mais algoritmos em uma execução, menor os gráficos ficavam para que cabesse todos os gráficos lado a lado para essa comparação visual.
 ```
 
-O núcleo recupera Bubble, Heap, Quick e Selection. Os quatro algoritmos usam acesso direto no vetor e um índice de nós nas listas. A ordenação preserva os nós e restaura os links, contabiliza a alocação auxiliar e emite trocas no formato de eventos existente.
-Validação do núcleo: mingw32-make -j4 test-integration BUILD=build-race CFLAGS="-O2 -Werror" passou. A matriz cobriu 24 combinações em seis classes de entrada, a integração verificou os seis traces nas quatro estruturas, e a API aceitou os seis algoritmos na mesma requisição.
-Interface: Compare abre automaticamente um gráfico para cada execução, com Play/Pause, velocidade, Next, Undo e Restart compartilhados. O Chrome headless confirmou um, dois e seis gráficos, igualdade dos estados finais com o C, resultados mais curtos preservados ao retroceder o último passo, seis colunas a 1280 px e duas colunas a 390 px, sem rolagem horizontal da página.
+The native engine gained Bubble, Heap, Quick, and Selection Sort. These four algorithms access vector items directly and use a node index for linked lists. Sorting preserves the original nodes and restores their links. The benchmark accounts for auxiliary allocation, and the algorithms emit swaps using the existing event format.
+`mingw32-make -j4 test-integration BUILD=build-race CFLAGS="-O2 -Werror"` passed. The sorting matrix covered 24 combinations across six input categories. Integration tests verified all six algorithms’ traces on all four structures, and the API accepted all six algorithms in one request.
+Selecting Compare automatically opens one animated plot per run. The plots share controls for play, pause, speed, next step, undo, and restart. Headless Chrome verified runs with one, two, and six plots and confirmed that the final sequences matched the C output. Undoing the final step left shorter runs unchanged. The layout showed six columns at 1280 px and two columns at 390 px, with no horizontal page scrolling.
