@@ -74,6 +74,20 @@ function render() {
   play.textContent = timer === undefined ? "Play" : "Pause";
 }
 
+function showTrace(trace, label) {
+  const loaded = new TraceReplay(trace);
+  ++loadSequence;
+  stop();
+  replay = loaded;
+  const largest = trace.initial.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
+  scale = 36 / largest;
+  origin.textContent = `${label} · ${trace.algorithm} sort · ${trace.structure}`;
+  bars.replaceChildren();
+  viewer.hidden = false;
+  error.hidden = true;
+  render();
+}
+
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
   const sequence = ++loadSequence;
@@ -84,13 +98,8 @@ fileInput.addEventListener("change", async () => {
   try {
     const trace = JSON.parse(await file.text());
     if (sequence !== loadSequence) return;
-    replay = new TraceReplay(trace);
-    const largest = trace.initial.reduce((max, item) => Math.max(max, Math.abs(item.value)), 1);
-    scale = 36 / largest;
-    origin.textContent = `${file.name} · ${trace.algorithm} sort · ${trace.structure}`;
-    bars.replaceChildren();
-    viewer.hidden = false;
-    render();
+    showTrace(trace, file.name);
+    viewer.scrollIntoView({ block: "nearest" });
   } catch (problem) {
     if (sequence !== loadSequence) return;
     error.textContent = `Could not load ${file.name}. ${problem.message}`;
@@ -121,3 +130,133 @@ play.addEventListener("click", () => {
   }
   render();
 });
+
+const form = document.getElementById("comparison-form");
+const inputSize = document.getElementById("vector-size");
+const valuesField = document.getElementById("values");
+const preview = document.getElementById("preview");
+const compare = document.getElementById("compare");
+const comparisonStatus = document.getElementById("comparison-status");
+const comparisonError = document.getElementById("comparison-error");
+const resultPanel = document.getElementById("comparison-results");
+const resultInput = document.getElementById("result-input");
+const resultRows = document.getElementById("result-rows");
+const algorithmLabels = { insertion: "Insertion Sort", merge: "Merge Sort" };
+
+function readValues() {
+  const size = inputSize.valueAsNumber;
+  if (!Number.isInteger(size) || size < 0 || size > 256) {
+    throw new Error("Input size must be an integer from 0 to 256.");
+  }
+  const text = valuesField.value.trim();
+  const parts = text === "" ? [] : text.split(/\s*,\s*|\s+/);
+  const values = parts.map(Number);
+  if (parts.some((part, index) => !/^[+-]?\d+$/.test(part) ||
+      values[index] < -2147483648 || values[index] > 2147483647)) {
+    throw new Error("Enter only 32-bit integers separated by commas or spaces.");
+  }
+  if (values.length !== size) {
+    throw new Error(`Input size is ${size}, but ${values.length} values were entered.`);
+  }
+  return values;
+}
+
+function updatePreview() {
+  try {
+    const values = readValues();
+    preview.textContent = `[${values.join(", ")}]`;
+  } catch (problem) {
+    preview.textContent = problem.message;
+  }
+}
+
+function showComparisonError(message) {
+  comparisonError.textContent = message;
+  comparisonError.hidden = false;
+}
+
+form.addEventListener("input", () => {
+  comparisonError.hidden = true;
+  updatePreview();
+});
+
+document.getElementById("generate").addEventListener("click", () => {
+  if (!inputSize.reportValidity()) return;
+  const randomValues = Array.from({ length: inputSize.valueAsNumber },
+    () => Math.floor(Math.random() * 201) - 100);
+  valuesField.value = randomValues.join(", ");
+  comparisonError.hidden = true;
+  updatePreview();
+});
+
+function showResults(result) {
+  const rows = document.createDocumentFragment();
+  for (const { metrics, trace } of result.results) {
+    const label = algorithmLabels[trace.algorithm];
+    const row = document.createElement("tr");
+    row.dataset.algorithm = trace.algorithm;
+    const header = document.createElement("th");
+    header.scope = "row";
+    header.textContent = label;
+    row.append(header);
+    for (const value of [metrics.medianMs.toFixed(6), metrics.comparisons,
+      metrics.structureBytes, metrics.auxiliaryBytes, metrics.peakBytes]) {
+      row.insertCell().textContent = value;
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Replay";
+    button.setAttribute("aria-label", `Replay ${label}`);
+    button.addEventListener("click", () => {
+      showTrace(trace, "Native C comparison");
+      viewer.scrollIntoView({ block: "nearest" });
+    });
+    row.insertCell().append(button);
+    rows.append(row);
+  }
+  showTrace(result.results[0].trace, "Native C comparison");
+  resultRows.replaceChildren(rows);
+  resultInput.textContent = `${result.structure} · ${result.repetitions} repetitions · [${result.input.join(", ")}]`;
+  resultPanel.hidden = false;
+}
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  comparisonError.hidden = true;
+  comparisonStatus.textContent = "";
+  try {
+    const values = readValues();
+    const algorithms = Array.from(form.querySelectorAll('input[name="algorithms"]:checked'),
+      checkbox => checkbox.value);
+    if (algorithms.length < 2) throw new Error("Choose at least two distinct algorithms.");
+    if (location.protocol === "file:") {
+      throw new Error("Start the local service with node web/serve.mjs and open the address it prints.");
+    }
+    const structure = document.getElementById("structure").value;
+    const repetitions = document.getElementById("repetitions").valueAsNumber;
+    compare.disabled = true;
+    resultPanel.hidden = true;
+    comparisonStatus.textContent = "Running the C comparison…";
+    let response;
+    try {
+      response = await fetch("/api/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ structure, algorithms, repetitions, values }),
+      });
+    } catch {
+      throw new Error("Could not reach the local comparison service.");
+    }
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error);
+    showResults(result);
+    comparisonStatus.textContent = "Comparison complete.";
+  } catch (problem) {
+    showComparisonError(problem.message);
+    comparisonStatus.textContent = "";
+  } finally {
+    compare.disabled = false;
+  }
+});
+
+updatePreview();

@@ -25,3 +25,9 @@ Schema version 1 contains `schemaVersion`, `algorithm`, `structure`, `initial`, 
 Insertion emits a move when it inserts an item earlier in the prefix. Merge emits a move when the next item is taken from the right half ahead of remaining left items. Neither implementation performs swaps. The C sequence in `final` comes directly from the sorted data. Export verifies it against an independent replay of emitted events, including IDs.
 
 The C replay owns a visual buffer and a preallocated LIFO stack. Each advance pushes the event and previous highlight. Undo pops that frame, inverts the move or swap, restores the highlight, and backs up the cursor. The static viewer validates the complete file before enabling playback and applies the same position and ID rules.
+
+## Direct comparison from the browser
+
+The browser validates and previews one input, then POSTs the values, one structure, selected algorithms and repetition count to the local Node.js service. The service validates the request and calls the existing native executable without a shell. It serves only the web assets and binds to the loopback address. One comparison runs at a time per server to avoid contention between its own measurements.
+
+The C comparison creates a fresh data structure for every timed execution and checks it against a reference outside the measurement. Each algorithm runs again with the observer enabled to generate the trace. The comparison envelope declares its own schema version and nests the existing trace v1 objects. The browser displays metrics from the envelope and feeds each trace to the same replay engine used for file imports.

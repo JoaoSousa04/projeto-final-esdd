@@ -17,6 +17,60 @@
       <p id="error" role="alert" hidden></p>
     </header>
 
+    <section id="comparison" aria-labelledby="comparison-heading">
+      <h2 id="comparison-heading">Compare algorithms</h2>
+      <form id="comparison-form">
+        <div class="settings">
+          <label for="vector-size">Input size
+            <input id="vector-size" type="number" min="0" max="256" step="1" value="7" required>
+          </label>
+          <div>
+            <label for="structure">Structure</label>
+            <select id="structure">
+              <option value="vector">Vector</option>
+              <option value="singly">Singly linked list</option>
+              <option value="doubly">Doubly linked list</option>
+              <option value="circular">Circular linked list</option>
+            </select>
+          </div>
+          <label for="repetitions">Timed repetitions
+            <input id="repetitions" type="number" min="1" max="100" step="1" value="5" required>
+          </label>
+        </div>
+        <label for="values">Input values (integers separated by commas or spaces)</label>
+        <textarea id="values" rows="2" spellcheck="false">4, -2, 4, 0, -3, 1, 0</textarea>
+        <button id="generate" type="button">Generate random values</button>
+        <p class="sequence">Input preview <output id="preview" for="vector-size values"></output></p>
+        <fieldset>
+          <legend>Choose at least two algorithms</legend>
+          <label><input type="checkbox" name="algorithms" value="insertion" checked> Insertion Sort</label>
+          <label><input type="checkbox" name="algorithms" value="merge" checked> Merge Sort</label>
+        </fieldset>
+        <button id="compare" type="submit">Compare</button>
+        <p id="comparison-status" aria-live="polite"></p>
+        <p id="comparison-error" role="alert" hidden></p>
+      </form>
+      <div id="comparison-results" hidden>
+        <p id="result-input" class="sequence"></p>
+        <div class="results-scroll">
+          <table>
+            <caption>Native C results</caption>
+            <thead><tr>
+              <th scope="col">Algorithm</th>
+              <th scope="col">Median (ms)</th>
+              <th scope="col">Comparisons</th>
+              <th scope="col">Structure (B)</th>
+              <th scope="col">Auxiliary (B)</th>
+              <th scope="col">Peak (B)</th>
+              <th scope="col">Animation</th>
+            </tr></thead>
+            <tbody id="result-rows"></tbody>
+          </table>
+        </div>
+        <p>Time covers sorting only. Estimated bytes exclude allocator overhead and the call stack.</p>
+      </div>
+    </section>
+
     <section id="viewer" aria-label="Trace playback" hidden>
       <div class="toolbar">
         <p id="origin"></p>

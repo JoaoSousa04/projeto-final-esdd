@@ -69,3 +69,37 @@ button:disabled { cursor: default; opacity: .55; }
 @media (prefers-reduced-motion: reduce) {
   .bar::before { transition: none; }
 }
+
+#comparison {
+  background: #182639;
+  border: 1px solid #425675;
+  border-radius: .75rem;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+#comparison h2 { margin: 0 0 1rem; font-size: 1.5rem; }
+.settings { display: flex; align-items: start; flex-wrap: wrap; gap: .75rem 1.25rem; }
+.settings label { margin-bottom: .25rem; }
+.settings input, .settings select { display: block; margin-top: .25rem; }
+.settings input { width: 7.5rem; }
+input[type="number"], select, textarea {
+  background: #101b29;
+  color: #f2f5fa;
+  border: 1px solid #7691b8;
+  border-radius: .375rem;
+  font: inherit;
+  padding: .45rem .6rem;
+}
+textarea { display: block; width: 100%; margin-bottom: .6rem; resize: vertical; }
+.sequence { overflow-wrap: anywhere; }
+#preview { display: block; color: #c1d2e7; font-variant-numeric: tabular-nums; }
+fieldset { border: 1px solid #7691b8; border-radius: .375rem; margin: 0 0 .85rem; }
+fieldset label { display: inline-block; margin: .25rem 1rem .25rem 0; }
+#comparison-error { color: #ffb4b8; }
+#comparison-status:empty { display: none; }
+#comparison-results { margin-top: 1.25rem; }
+.results-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+caption { text-align: left; font-weight: 600; margin-bottom: .5rem; }
+th, td { text-align: left; padding: .55rem; border-bottom: 1px solid #425675; }
+th { white-space: nowrap; }

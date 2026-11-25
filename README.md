@@ -73,3 +73,11 @@ node web/serve.mjs
 ~~~
 
 The service listens at `http://127.0.0.1:8080` for the session. If you built into another directory, pass the executable path, for example `node web/serve.mjs build-compare/platform.exe`. The API runs the C executable for each request and returns a comparison envelope containing the original trace v1 objects and the native metrics.
+
+Open **Compare algorithms**, set the size, and type integers or select **Generate random values**. The preview shows the exact input. Select a single structure and both algorithms, then select **Compare**. The result table shows native C metrics and a **Replay** button for each trace. The same page still opens exported trace files directly.
+
+The interactive comparison accepts 0–256 signed 32-bit integers and 1–100 timed repetitions. The controller keeps the generated values until you edit or regenerate them. For a direct diagnostic of the same native JSON response:
+
+~~~powershell
+./build/platform.exe compare vector 5 insertion,merge 4 -2 4 0 -3 1 0
+~~~
