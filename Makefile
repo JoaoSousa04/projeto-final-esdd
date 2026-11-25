@@ -31,7 +31,7 @@ $(BUILD)/test_structures$(EXE): tests/test_structures.c $(DATA) Makefile | $(BUI
 $(BUILD)/test_sorting$(EXE): tests/test_sorting.c $(DATA) $(SORT) Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/test_benchmark$(EXE): tests/test_benchmark.c $(DATA) $(SORT) $(BENCH) Makefile | $(BUILD)
+$(BUILD)/test_benchmark$(EXE): tests/test_benchmark.c $(DATA) $(SORT) $(BENCH) $(TRACE) Makefile | $(BUILD)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(WARNINGS) -o $@ $(filter %.c,$^) $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_trace$(EXE): tests/test_trace.c $(DATA) $(SORT) $(TRACE) Makefile | $(BUILD)

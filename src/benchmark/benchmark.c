@@ -3,6 +3,7 @@
 #endif
 #include "benchmark.h"
 #include "../structures/queue.h"
+#include "../trace/trace.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -118,8 +119,13 @@ static bool matches_reference(const Data *data, const int *reference, size_t siz
     return true;
 }
 
-static const char *measure(Task task, const int *values, const int *reference,
-                           FILE *output, size_t attempt, double *milliseconds)
+typedef struct {
+    double milliseconds;
+    size_t structure_bytes;
+    SortMetrics sort;
+} Sample;
+
+static const char *measure(Task task, const int *values, const int *reference, Sample *sample)
 {
     Data data;
     data_init(&data, task.structure);
@@ -142,18 +148,18 @@ static const char *measure(Task task, const int *values, const int *reference,
     } else if (!matches_reference(&data, reference, task.input.size)) {
         status = "validation-error";
     } else {
-        *milliseconds = (end - start) * 1000.0;
-        fprintf(output, "%zu,%zu,ok,%.9f,%zu,%zu,%zu,%" PRIu64 "\n",
-                task.id, attempt, *milliseconds, before, metrics.auxiliary_bytes,
-                before + metrics.auxiliary_bytes, metrics.comparisons);
+        *sample = (Sample){(end - start) * 1000.0, before, metrics};
     }
 
 cleanup:
     data_destroy(&data);
-    if (strcmp(status, "ok") != 0) {
-        fprintf(output, "%zu,%zu,%s,,,,,\n", task.id, attempt, status);
-    }
-    return status;
+    return strcmp(status, "ok") == 0 ? NULL : status;
+}
+
+static double median(double *times, size_t count)
+{
+    qsort(times, count, sizeof(*times), compare_times);
+    return (times[(count - 1) / 2] + times[count / 2]) / 2.0;
 }
 
 static bool run_task(Task task, FILE *output)
@@ -176,15 +182,20 @@ static bool run_task(Task task, FILE *output)
         memcpy(reference, values, input.size * sizeof(*values));
         qsort(reference, input.size, sizeof(*reference), compare_ints);
         for (size_t attempt = 1; attempt <= input.repetitions; ++attempt) {
-            const char *status = measure(task, values, reference, output, attempt, &times[successful]);
-            if (strcmp(status, "ok") == 0) {
-                ++successful;
+            Sample sample;
+            const char *error = measure(task, values, reference, &sample);
+            if (error != NULL) {
+                fprintf(output, "%zu,%zu,%s,,,,,\n", task.id, attempt, error);
+                continue;
             }
+            fprintf(output, "%zu,%zu,ok,%.9f,%zu,%zu,%zu,%" PRIu64 "\n",
+                    task.id, attempt, sample.milliseconds, sample.structure_bytes,
+                    sample.sort.auxiliary_bytes, sample.structure_bytes + sample.sort.auxiliary_bytes,
+                    sample.sort.comparisons);
+            times[successful++] = sample.milliseconds;
         }
         if (successful > 0) {
-            qsort(times, successful, sizeof(*times), compare_times);
-            double median = (times[(successful - 1) / 2] + times[successful / 2]) / 2.0;
-            fprintf(output, "median,%zu,%zu,%.9f\n", task.id, successful, median);
+            fprintf(output, "median,%zu,%zu,%.9f\n", task.id, successful, median(times, successful));
         }
     } else {
         fprintf(output, "task-error,%zu,allocation-error\n", task.id);
@@ -277,4 +288,72 @@ int benchmark_batch(FILE *input, FILE *output)
     }
     bool queued_success = run_queue(&queue, output);
     return success && queued_success && !ferror(output) ? 0 : 1;
+}
+
+static bool compare_algorithm(Task task, const int *values, const int *reference, FILE *output)
+{
+    double times[COMPARE_MAX_REPETITIONS];
+    Sample sample;
+    for (size_t attempt = 0; attempt < task.input.repetitions; ++attempt) {
+        const char *error = measure(task, values, reference, &sample);
+        if (error != NULL) {
+            fprintf(stderr, "Comparison failed: %s\n", error);
+            return false;
+        }
+        times[attempt] = sample.milliseconds;
+    }
+
+    Data data;
+    data_init(&data, task.structure);
+    Trace trace = {0};
+    bool ready = true;
+    for (size_t index = 0; ready && index < task.input.size; ++index) {
+        ready = data_append(&data, values[index]);
+    }
+    ready = ready && trace_build(&trace, &data, task.algorithm);
+    if (ready) {
+        fprintf(output,
+                "{\"metrics\":{\"medianMs\":%.9f,\"structureBytes\":%zu,"
+                "\"auxiliaryBytes\":%zu,\"peakBytes\":%zu,\"comparisons\":%" PRIu64 "},\"trace\":",
+                median(times, task.input.repetitions), sample.structure_bytes,
+                sample.sort.auxiliary_bytes, sample.structure_bytes + sample.sort.auxiliary_bytes,
+                sample.sort.comparisons);
+        ready = trace_write(output, &trace, &data, task.algorithm);
+        fputc('}', output);
+    } else {
+        fputs("Could not build or validate comparison trace.\n", stderr);
+    }
+    trace_destroy(&trace);
+    data_destroy(&data);
+    return ready;
+}
+
+bool benchmark_compare(Structure structure, const Algorithm *algorithms, size_t count,
+                       const int *values, size_t size, size_t repetitions, FILE *output)
+{
+    if (size > COMPARE_MAX_VALUES || repetitions == 0 || repetitions > COMPARE_MAX_REPETITIONS) {
+        return false;
+    }
+    int reference[COMPARE_MAX_VALUES];
+    memcpy(reference, values, size * sizeof(*values));
+    qsort(reference, size, sizeof(*reference), compare_ints);
+
+    fprintf(output, "{\"schemaVersion\":1,\"structure\":\"%s\",\"repetitions\":%zu,\"input\":[",
+            structure_name(structure), repetitions);
+    for (size_t index = 0; index < size; ++index) {
+        fprintf(output, "%s%d", index == 0 ? "" : ",", values[index]);
+    }
+    fputs("],\"results\":[", output);
+    for (size_t index = 0; index < count; ++index) {
+        Task task = {.algorithm = algorithms[index], .structure = structure,
+                     .input = {.size = size, .repetitions = repetitions}};
+        if (index != 0) {
+            fputc(',', output);
+        }
+        if (!compare_algorithm(task, values, reference, output)) {
+            return false;
+        }
+    }
+    fputs("]}\n", output);
+    return fflush(output) == 0 && !ferror(output);
 }

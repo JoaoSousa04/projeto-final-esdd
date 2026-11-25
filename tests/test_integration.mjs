@@ -45,6 +45,39 @@ try {
     }
   }
 
+  for (const structure of ["vector", "singly", "doubly", "circular"]) {
+    const compared = run(["compare", structure, "3", "merge,insertion", ...input]);
+    assert.equal(compared.status, 0, compared.stderr);
+    const result = JSON.parse(compared.stdout);
+    assert.equal(result.schemaVersion, 1);
+    assert.equal(result.structure, structure);
+    assert.equal(result.repetitions, 3);
+    assert.deepEqual(result.input, input.map(Number));
+    assert.deepEqual(result.results.map(row => row.trace.algorithm), ["merge", "insertion"]);
+    for (const { metrics, trace } of result.results) {
+      const replay = new TraceReplay(trace);
+      assert.deepEqual(trace.initial, input.map((value, id) => ({ id, value: Number(value) })));
+      while (replay.next()) {}
+      assert.deepEqual(replay.items.map(item => item.value), [-3, -2, 0, 0, 1, 4, 4]);
+      assert.equal(metrics.comparisons, trace.events.filter(event => event.type === "compare").length);
+      assert.equal(metrics.peakBytes, metrics.structureBytes + metrics.auxiliaryBytes);
+      assert.ok(metrics.medianMs >= 0);
+    }
+  }
+  const empty = run(["compare", "vector", "1", "insertion,merge"]);
+  assert.equal(empty.status, 0, empty.stderr);
+  assert.deepEqual(JSON.parse(empty.stdout).input, []);
+  for (const options of [
+    ["vector", "1", "merge"], ["vector", "1", "merge,merge"],
+    ["vector", "0", "merge,insertion"], ["vector", "101", "merge,insertion"],
+    ["vector", "1", "merge,insertion", "2147483648"], ["other", "1", "merge,insertion"],
+    ["vector", "1", "merge,insertion,"],
+  ]) {
+    const invalid = run(["compare", ...options]);
+    assert.equal(invalid.status, 1);
+    assert.equal(invalid.stdout, "");
+  }
+
   const steps = run(["step", "insertion", "vector", "2", "1"], {
     input: ["u", "n", "n", "u", "n", "n", "q", ""].join("\n"),
   });

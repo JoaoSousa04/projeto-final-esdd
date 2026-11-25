@@ -69,3 +69,35 @@ Codex tested allocation failures without changing the production allocator. The 
 The clean build exposed a Make recipe that assumed cmd.exe on Windows. Codex replaced the conditional command with a mkdir recipe supported by the selected shell. GCC's analyzer also identified a possible null tail in the unspecialized list-restoration helper. Codex guarded circular closure when there is no tail. The allocator test exposed out-of-order reporting on a failed enqueue. The batch now drains older queued work before reporting the failed task and continues reading later tasks.
 
 Verification passed in a clean source copy with strict GCC, Node.js, and headless Chrome. GCC -fanalyzer and the five C test executables under Application Verifier Heaps also passed. The GCC and Visual Studio sanitizer link attempts could not find their runtime libraries. The validation report records the environment, actual benchmark results, and the remaining team review.
+
+## Comparação pela página
+
+Prompt aprovado para implementação
+
+```text
+Analise como aproximar a versão inicial da Plataforma de Análise de Estruturas e Algoritmos da experiência que tínhamos na versão antiga. Use o ZIP da versão antiga como referência e examine o repositório atual e o plan.md.
+
+Na versão antiga, conseguíamos configurar o vetor, escolher os algoritmos e comparar os resultados diretamente pela página. Queremos recuperar esse fluxo na versão atual, preservando as tecnologias adotadas pelo Codex, o núcleo em C, a interface em HTML, CSS e JavaScript e, tanto quanto possível, a estrutura dos arquivos e módulos.
+
+## Experiência desejada
+
+1. Configurar o vetor pela página, escolhendo seu tamanho, informando os valores manualmente ou gerando valores aleatórios. Mostrar o vetor que será usado e validar entradas inválidas.
+2. Selecionar dois ou mais algoritmos de ordenação disponíveis e executá-los com a mesma sequência inicial e a mesma estrutura de dados, para permitir uma comparação justa.
+3. Iniciar a execução pela interface e visualizar os resultados na própria página, com as métricas disponíveis e a animação da ordenação conforme o plan.md.
+4. Completar esse fluxo sem precisar executar comandos em C, gerar um JSON manualmente ou importar um arquivo a cada comparação. O JSON pode continuar sendo usado internamente para transportar métricas e eventos do C até a interface.
+
+## Análise de viabilidade
+
+- Identifique como a versão antiga oferecia esse fluxo e o que a versão atual já permite reaproveitar. Cite os arquivos relevantes nas duas versões.
+- Verifique se o código C atual aceita uma sequência de valores definida pelo usuário, executa os algoritmos selecionados e devolve métricas e eventos em um formato que a interface consegue consumir. Preserve no C a ordenação e a coleta das métricas.
+- Avalie como a página pode solicitar a execução do C no ambiente atual. Comece pelos mecanismos que já existem no projeto. Se for necessária uma integração, descreva a menor adaptação possível, onde ela entraria e como o usuário abriria a plataforma. Se houver uma etapa de inicialização do ambiente, deixe claro o que acontece uma única vez e o que acontece automaticamente a cada comparação.
+- Preserve as tecnologias existentes. Trate qualquer mudança no contrato JSON, no build ou na estrutura do projeto como uma proposta a justificar, indicando quais arquivos seriam afetados e por que a mudança seria necessária.
+- Mostre um fluxo completo de exemplo, desde a configuração do vetor na página até a exibição dos resultados de dois algoritmos. Indique como verificar que ambos receberam a mesma entrada e que as métricas exibidas vieram do núcleo em C.
+
+Apresente primeiro a solução mais simples que atende ao fluxo, os arquivos que precisariam mudar e a ordem de implementação. Separe o que foi confirmado no código do que ainda precisa de teste. Nesta etapa, aguarde minha aprovação antes de editar arquivos, fazer commits ou enviar alterações ao remoto.
+
+Após minha aprovação, implemente as melhorias aprovadas em incrementos testáveis. Para cada incremento, execute os testes, revise o diff, faça o commit, envie-o à branch remota e confirme a publicação. Atualize o AI_LOG.md com os prompts e as adaptações efetivamente realizadas.
+```
+
+A versão antiga usava C em WebAssembly e um Web Worker. A adaptação aprovada usa o executável nativo e uma ponte local em Node.js. O primeiro incremento reutiliza a rotina de medição em C para entradas explícitas e mantém o trace v1 separado da passada cronometrada.
+Validação: mingw32-make -j4 test-integration BUILD=build-compare CFLAGS="-O2 -Werror" passou. As quatro estruturas reutilizam a entrada idêntica, e as contagens do benchmark coincidem com os eventos compare. A pasta separada contornou a recusa de sobrescrita de build/platform.exe no Windows.
