@@ -1,0 +1,71 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #101b29;
+  color: #f2f5fa;
+  font: 1rem/1.5 system-ui, sans-serif;
+}
+main { width: min(68rem, calc(100% - 2rem)); margin: 4rem auto; }
+header { margin-bottom: 1.75rem; }
+h1 { margin: 0 0 1rem; font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.1; }
+label { display: block; margin-bottom: .5rem; color: #c1d2e7; }
+input, button { font: inherit; }
+input { max-width: 100%; }
+input::file-selector-button, button {
+  cursor: pointer;
+  background: #253853;
+  border: 1px solid #7691b8;
+  border-radius: .375rem;
+  color: #f2f5fa;
+  padding: .45rem .9rem;
+}
+:focus-visible { outline: 3px solid #f6be63; outline-offset: 3px; }
+button:disabled { cursor: default; opacity: .55; }
+#error { color: #ffb4b8; }
+#viewer { background: #182639; padding: 1.25rem; border: 1px solid #425675; border-radius: .75rem; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6rem; }
+.controls { display: flex; flex-wrap: wrap; gap: .5rem; }
+#origin, #status { overflow-wrap: anywhere; }
+.plot { position: relative; overflow-x: auto; }
+.plot::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid #7691b8;
+}
+#bars {
+  display: flex;
+  align-items: stretch;
+  gap: .4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-height: 16rem;
+}
+.bar {
+  position: relative;
+  flex: 1 0 3rem;
+  min-width: 3rem;
+  min-height: 16rem;
+  text-align: center;
+  isolation: isolate;
+}
+.bar::before {
+  content: "";
+  position: absolute;
+  inset: auto 8% var(--bottom);
+  height: max(2px, var(--height));
+  border-radius: .25rem;
+  background: #70b7ed;
+  transition: height 130ms ease, bottom 130ms ease, background-color 130ms ease;
+  z-index: -1;
+}
+.bar.selected::before { background: #f6be63; }
+.bar span {
+  position: absolute;
+  inset: auto 0 0;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar::before { transition: none; }
+}

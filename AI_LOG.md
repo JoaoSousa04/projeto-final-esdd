@@ -56,3 +56,8 @@ Codex added stable insertion and merge sorts in `src/sorting/sort.c`. The list i
 ### Benchmark and batch (RF-04, RF-06)
 
 Codex implemented reproducible input generation, monotonic timing, memory estimates, reference validation, and the FIFO queue in src/benchmark and src/structures/queue.c. The C test checks eight comparison tasks and a three-task batch with an invalid middle record. The sample batch uses identical configurations across all eight combinations.
+
+### Trace and viewer (RF-05, RF-07)
+
+Codex instrumented the real sort operations, wrote the versioned JSON contract, and implemented the C undo stack and a static local viewer. The sorting core emits a logical move for an insertion or a merge selection from the right half. No extra swap events were added. The C and JavaScript checks advance and undo comparisons and moves, verify empty and single-item inputs, and compare replay with the actual C output for all eight combinations.
+Verification: strict GCC C tests, Node integration across 24 generated traces, and headless Chrome for all eight combinations. Chrome also checked highlight changes, move undo, autoplay, empty input, malformed JSON, and unsupported schema versions.
